@@ -239,6 +239,23 @@
       color: var(--accent);
     }
 
+    .options-card { text-align: center; }
+    .options-card .section-label { text-align: center; }
+    .options-card .field-label { justify-content: center; gap: 6px; }
+    .options-card .field-input,
+    .options-card select.field-input,
+    .options-card .inline-input {
+      text-align: center;
+      text-align-last: center;
+    }
+    .options-card .options-center-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     .pill-select, .btn-toggle {
       background: var(--surface-well);
       border: 1px solid var(--border-subtle);
@@ -821,25 +838,25 @@
         <div class="top-island-row">
           <div class="controls-cluster">
             <button id="premiumToggle" class="btn-toggle active" type="button" title="Toggles Premium status">
-              👑 Premium: <span style="color: var(--gold);">ON (4%)</span>
+              Premium: <span style="color: var(--gold);">ON (4%)</span>
             </button>
 
-            <button id="buyOrderToggle" class="btn-toggle active" type="button" title="Buy Order (+2.5% setup fee) vs Instant Buy (0% fee)">
-              🛒 Buy: <span style="color: var(--accent);">Buy Order (+2.5%)</span>
+            <button id="buyOrderToggle" class="btn-toggle active" type="button" title="Buy Order (2.5% setup fee) vs Instant Buy (0% fee)">
+              Buy: <span style="color: var(--accent);">Order (2.5%)</span>
             </button>
 
-            <button id="orderTypeToggle" class="btn-toggle active" type="button" title="Sell Order (+2.5% setup fee) vs Instant Sell">
-              📝 Order: <span style="color: var(--accent);">Sell Order (+2.5%)</span>
+            <button id="orderTypeToggle" class="btn-toggle active" type="button" title="Sell Order (tax + 2.5% setup fee) vs Instant Sell (tax only)">
+              Sell: <span style="color: var(--accent);">Order (6.5%)</span>
             </button>
           </div>
 
           <div class="controls-cluster">
             <button id="openSpecsBtn" class="pill-select" type="button" style="border-color: var(--border); color: var(--t4-color);">
-              🎯 Specs (<span id="specSummaryBadge">500/500</span>)
+              Specs (<span id="specSummaryBadge">500/500</span>)
             </button>
 
             <button id="togglePriceMatrixBtn" class="btn-toggle active" type="button">
-              📋 Price Matrix
+              Item Prices
             </button>
           </div>
         </div>
@@ -852,7 +869,7 @@
 
             <div id="focusPickerWrap" class="tier-picker-wrap">
               <button id="focusTiersBtn" class="pill-select" type="button" title="Select individual tiers to use Focus on (None disables Focus)">
-                🎯 Focus: <span id="focusTiersSummary"></span> ▾
+                ⚡ Focus: <span id="focusTiersSummary"></span> ▾
               </button>
               <div id="focusTiersMenu" class="tier-picker-menu">
                 <div class="tier-picker-header">Use Focus on Tiers (Recursive / Direct)</div>
@@ -864,14 +881,6 @@
                 </div>
               </div>
             </div>
-
-            <button id="compoundToggle" class="btn-toggle active" type="button" title="Re-refine returned materials iteratively">
-              🔄 Compounding: <span style="color: var(--success);">ON</span>
-            </button>
-
-            <button id="recursiveToggleBtn" class="btn-toggle" type="button" title="Self-refine entire lower-tier chain from T2 raw">
-              🔗 Recursive: <span style="color: var(--text-muted);">OFF</span>
-            </button>
 
             <button id="heartToggle" class="btn-toggle" type="button" title="Substitutes 1 raw resource per craft with 1 Faction Heart (affected by RRR, disabled on .4)">
               🫀 <span id="heartBtnName">Mountainheart</span>: <span id="heartToggleStatus" style="color: var(--text-muted);">OFF</span>
@@ -891,6 +900,14 @@
                 </div>
               </div>
             </div>
+
+            <button id="compoundToggle" class="btn-toggle active" type="button" title="Re-refine returned materials iteratively">
+              Compounding: <span style="color: var(--success);">ON</span>
+            </button>
+
+            <button id="recursiveToggleBtn" class="btn-toggle" type="button" title="Self-refine entire lower-tier chain from T2 raw">
+              Recursive: <span style="color: var(--text-muted);">OFF</span>
+            </button>
           </div>
         </div>
       </header>
@@ -937,13 +954,12 @@
               </div>
               <div style="text-align: right; font-family: monospace;">
                 <div id="recipeText" style="font-size: 12px; font-weight: 700;"></div>
-                <div id="itemIdText" style="font-size: 10px; color: var(--text-muted);"></div>
               </div>
             </div>
           </section>
 
           <!-- Card 2: Options -->
-          <section class="card">
+          <section class="card options-card">
             <div class="card-header">
               <h2 class="card-title">2. Options</h2>
               <div style="display: flex; align-items: center; gap: 6px;">
@@ -959,7 +975,7 @@
 
             <!-- Custom RRR Box -->
             <div id="customRRRBox" style="display: none; background: var(--surface-alt); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 9px 12px; margin-bottom: 12px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+              <div class="options-center-row" style="font-size: 12px;">
                 <span style="color: var(--text-muted); font-weight: 600;">Custom Hideout / Zone RRR (%):</span>
                 <input type="number" id="customRRRInput" min="0" max="90" step="0.1" value="53.9" class="inline-input" style="width: 80px; color: var(--success);">
               </div>
@@ -987,11 +1003,11 @@
 
             <!-- Focus Cost Summary Box -->
             <div style="background: var(--surface-well); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 12px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 4px;">
+              <div class="options-center-row" style="font-size: 12px; margin-bottom: 4px;">
                 <span style="font-weight: 600; color: var(--text-muted);">Focus Cost / Craft:</span>
                 <span id="focusCostVal" style="font-weight: 800; font-family: monospace; color: var(--cyan); font-size: 14px;">4 FP</span>
               </div>
-              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted);">
+              <div class="options-center-row" style="font-size: 11px; color: var(--text-muted);">
                 <span><span id="quickSpecTierLabel">T4</span> Spec: <strong id="quickSpecVal" style="color: var(--text);">100</strong> | Total: <strong id="quickTotalSpecVal" style="color: var(--gold);">500/500</strong></span>
                 <button type="button" onclick="openSpecsModal()" style="background: none; border: none; color: var(--cyan); font-weight: 700; font-size: 11px; cursor: pointer; text-decoration: underline;">
                   Edit Specs ➔
@@ -1010,8 +1026,9 @@
               <button class="btn-item" style="padding: 3px 8px; min-width: auto;" onclick="setBatch(100)">100</button>
               <button class="btn-item" style="padding: 3px 8px; min-width: auto;" onclick="setBatch(500)">500</button>
               <button class="btn-item" style="padding: 3px 8px; min-width: auto;" onclick="setBatch(1000)">1,000</button>
-              <button class="btn-item" style="padding: 3px 8px; min-width: auto; color: var(--cyan);" onclick="fitFocusPool(10000)">10k FP</button>
-              <button class="btn-item" style="padding: 3px 8px; min-width: auto; color: var(--cyan);" onclick="fitFocusPool(30000)">30k FP</button>
+              <button class="btn-item" style="padding: 3px 8px; min-width: auto; color: var(--cyan);" onclick="fitFocusPool(10000)">10k Focus</button>
+              <button class="btn-item" style="padding: 3px 8px; min-width: auto; color: var(--cyan);" onclick="fitFocusPool(20000)">20k Focus</button>
+              <button class="btn-item" style="padding: 3px 8px; min-width: auto; color: var(--cyan);" onclick="fitFocusPool(30000)">30k Focus</button>
             </div>
           </div>
 
@@ -1142,10 +1159,10 @@
             <h2 class="card-title">Financial Breakdown &amp; Export</h2>
             <div style="display: flex; gap: 8px;">
               <button id="copyDiscordBtn" class="btn-action btn-secondary" type="button">
-                📋 Copy for Discord
+                Copy for Discord
               </button>
               <button id="exportCsvBtn" class="btn-action btn-secondary" type="button">
-                📊 Export CSV
+                Export CSV
               </button>
             </div>
           </div>
@@ -1198,15 +1215,15 @@
 
       </div>
 
-      <!-- Right Column: Market Price Matrix Side Window -->
+      <!-- Right Column: Item Prices Side Window -->
       <aside id="priceMatrixSidebar" class="side-price-panel">
         <div class="card-header" style="margin-bottom: 10px; padding-bottom: 8px;">
           <div>
-            <h3 class="card-title" style="font-size: 12px;">Market Price Matrix</h3>
+            <h3 class="card-title" style="font-size: 12px;">Item Prices</h3>
             <div style="font-size: 10px; color: var(--text-muted);" id="sideResourceName">All Ore &amp; Bar Prices (Europe)</div>
           </div>
           <button id="fetchAllPricesBtn" class="btn-action" type="button" style="padding: 5px 11px; font-size: 11px;">
-            📥 Fetch All
+            Fetch Prices
           </button>
         </div>
 
@@ -1445,20 +1462,23 @@
       const SESSION_STORAGE_KEY = 'ALBION_REFINING_SESSION_V1';
 
       function syncControlsUI() {
+        const sellTaxPct = (R.getMarketFeeRate({ hasPremium, orderType }) * 100).toFixed(1).replace(/\.0$/, '');
+        const buyTaxPct = (R.getBuyFeeRate({ buyOrderType }) * 100).toFixed(1).replace(/\.0$/, '');
+
         premiumToggle.className = 'btn-toggle' + (hasPremium ? ' active' : '');
-        premiumToggle.innerHTML = `👑 Premium: <span style="color: ${hasPremium ? 'var(--gold)' : 'var(--danger)'};">${hasPremium ? 'ON (4%)' : 'OFF (8%)'}</span>`;
+        premiumToggle.innerHTML = `Premium: <span style="color: ${hasPremium ? 'var(--gold)' : 'var(--danger)'};">${hasPremium ? 'ON (4%)' : 'OFF (8%)'}</span>`;
 
         buyOrderToggle.className = 'btn-toggle' + (buyOrderType === 'buy_order' ? ' active' : '');
-        buyOrderToggle.innerHTML = `🛒 Buy: <span style="color: ${buyOrderType === 'buy_order' ? 'var(--accent)' : 'var(--success)'};">${buyOrderType === 'buy_order' ? 'Buy Order (+2.5%)' : 'Instant Buy (0%)'}</span>`;
+        buyOrderToggle.innerHTML = `Buy: <span style="color: ${buyOrderType === 'buy_order' ? 'var(--accent)' : 'var(--success)'};">${buyOrderType === 'buy_order' ? `Order (${buyTaxPct}%)` : `Instant (${buyTaxPct}%)`}</span>`;
 
         orderTypeToggle.className = 'btn-toggle' + (orderType === 'sell_order' ? ' active' : '');
-        orderTypeToggle.innerHTML = `📝 Order: <span style="color: var(--accent);">${orderType === 'sell_order' ? 'Sell Order (+2.5%)' : 'Instant Sell'}</span>`;
+        orderTypeToggle.innerHTML = `Sell: <span style="color: var(--accent);">${orderType === 'sell_order' ? `Order (${sellTaxPct}%)` : `Instant (${sellTaxPct}%)`}</span>`;
 
         compoundToggle.className = 'btn-toggle' + (compound ? ' active' : '');
-        compoundToggle.innerHTML = `🔄 Compounding: <span style="color: ${compound ? 'var(--success)' : 'var(--text-muted)'};">${compound ? 'ON' : 'OFF'}</span>`;
+        compoundToggle.innerHTML = `Compounding: <span style="color: ${compound ? 'var(--success)' : 'var(--text-muted)'};">${compound ? 'ON' : 'OFF'}</span>`;
 
         recursiveToggleBtn.className = 'btn-toggle' + (isRecursive ? ' active' : '');
-        recursiveToggleBtn.innerHTML = `🔗 Recursive: <span style="color: ${isRecursive ? 'var(--purple)' : 'var(--text-muted)'};">${isRecursive ? 'ON' : 'OFF'}</span>`;
+        recursiveToggleBtn.innerHTML = `Recursive: <span style="color: ${isRecursive ? 'var(--purple)' : 'var(--text-muted)'};">${isRecursive ? 'ON' : 'OFF'}</span>`;
         recursiveChainSection.style.display = isRecursive ? 'block' : 'none';
 
         dailyBonusSelect.value = String(dailyBonusPercent);
@@ -1718,22 +1738,19 @@
       // Top Island Toggles
       premiumToggle.onclick = () => {
         hasPremium = !hasPremium;
-        premiumToggle.className = 'btn-toggle' + (hasPremium ? ' active' : '');
-        premiumToggle.innerHTML = `👑 Premium: <span style="color: ${hasPremium ? 'var(--gold)' : 'var(--danger)'};">${hasPremium ? 'ON (4%)' : 'OFF (8%)'}</span>`;
+        syncControlsUI();
         render();
       };
 
       buyOrderToggle.onclick = () => {
         buyOrderType = buyOrderType === 'buy_order' ? 'instant_buy' : 'buy_order';
-        buyOrderToggle.className = 'btn-toggle' + (buyOrderType === 'buy_order' ? ' active' : '');
-        buyOrderToggle.innerHTML = `🛒 Buy: <span style="color: ${buyOrderType === 'buy_order' ? 'var(--accent)' : 'var(--success)'};">${buyOrderType === 'buy_order' ? 'Buy Order (+2.5%)' : 'Instant Buy (0%)'}</span>`;
+        syncControlsUI();
         render();
       };
 
       orderTypeToggle.onclick = () => {
         orderType = orderType === 'sell_order' ? 'instant_sell' : 'sell_order';
-        orderTypeToggle.className = 'btn-toggle' + (orderType === 'sell_order' ? ' active' : '');
-        orderTypeToggle.innerHTML = `📝 Order: <span style="color: var(--accent);">${orderType === 'sell_order' ? 'Sell Order (+2.5%)' : 'Instant Sell'}</span>`;
+        syncControlsUI();
         render();
       };
 
@@ -1875,8 +1892,7 @@
 
       compoundToggle.onclick = () => {
         compound = !compound;
-        compoundToggle.className = 'btn-toggle' + (compound ? ' active' : '');
-        compoundToggle.innerHTML = `🔄 Compounding: <span style="color: ${compound ? 'var(--success)' : 'var(--text-muted)'};">${compound ? 'ON' : 'OFF'}</span>`;
+        syncControlsUI();
         render();
       };
 
@@ -1888,9 +1904,7 @@
 
       recursiveToggleBtn.onclick = () => {
         isRecursive = !isRecursive;
-        recursiveToggleBtn.className = 'btn-toggle' + (isRecursive ? ' active' : '');
-        recursiveToggleBtn.innerHTML = `🔗 Recursive: <span style="color: ${isRecursive ? 'var(--purple)' : 'var(--text-muted)'};">${isRecursive ? 'ON' : 'OFF'}</span>`;
-        recursiveChainSection.style.display = isRecursive ? 'block' : 'none';
+        syncControlsUI();
         render();
       };
 
@@ -2089,20 +2103,20 @@
           render();
           renderPriceMatrix();
           fetchAllPricesBtn.innerText = `✓ ${updated} OK`;
-          setTimeout(() => { fetchAllPricesBtn.innerText = '📥 Fetch All'; fetchAllPricesBtn.disabled = false; }, 2500);
+          setTimeout(() => { fetchAllPricesBtn.innerText = 'Fetch Prices'; fetchAllPricesBtn.disabled = false; }, 2500);
         } catch (e) {
           console.warn('API Error:', e);
           fetchAllPricesBtn.innerText = '⚠ Error';
-          setTimeout(() => { fetchAllPricesBtn.innerText = '📥 Fetch All'; fetchAllPricesBtn.disabled = false; }, 2500);
+          setTimeout(() => { fetchAllPricesBtn.innerText = 'Fetch Prices'; fetchAllPricesBtn.disabled = false; }, 2500);
         }
       };
 
-      // Reworked Price Matrix Side Window with Faction Heart + Tier Icons & Clickable Last-Updated Badges
+      // Reworked Item Prices Side Window with Faction Heart + Tier Icons & Clickable Last-Updated Badges
       function renderPriceMatrix() {
         document.getElementById('sideResourceName').innerText = `All ${selectedResource.name} & Heart (${selectedCity.name} · EU)`;
         priceMatrixBody.innerHTML = '';
 
-        // Faction Heart Row at the top of the Price Matrix
+        // Faction Heart Row at the top of Item Prices
         if (selectedResource.heartId) {
           const hData = priceStore.get(selectedResource.heartId) || { price: 40000, age: { text: '-', category: 'stale' } };
           const hTr = document.createElement('tr');
@@ -2110,7 +2124,7 @@
           hTr.style.borderBottom = '1.5px solid var(--border)';
           hTr.innerHTML = `
             <td style="color: var(--gold); font-weight: 800; font-size: 13px; white-space: nowrap;">
-              🫀 Heart
+              Heart
             </td>
             <td>
               <div class="matrix-cell">
@@ -2123,7 +2137,6 @@
             </td>
             <td>
               <div style="font-size: 12px; font-weight: 700; color: var(--gold);">${selectedResource.heartName}</div>
-              <div style="font-size: 10px; color: var(--text-muted);">-1 Raw / Craft (w/ RRR)</div>
             </td>
           `;
           const hInput = hTr.querySelector('input');
@@ -2367,7 +2380,6 @@
           `1x ${formatTierEnchHtml(selectedTier, selectedEnchant)} ${selectedResource.refinedName} = ${effectiveRawReq}x ${formatTierEnchHtml(selectedTier, selectedEnchant)} Raw` +
           (directUseHeart ? ` + 1x <span style="color: var(--gold);">${selectedResource.heartName}</span>` : '') +
           (tierData.prevReq > 0 ? ` + ${tierData.prevReq}x ${formatTierEnchHtml(selectedTier - 1, prevEnch)} Bar` : '');
-        document.getElementById('itemIdText').innerText = `Output ID: ${refinedId}`;
 
         const curRawPrice = Number(rawPriceInput.value) || 0;
         const curHeartPrice = Number(heartPriceInput.value) || 0;
@@ -2640,7 +2652,7 @@ ${displayTotalFocusSpent > 0 && displaySilverFocus !== null ? `S / Focus:   ${di
           navigator.clipboard.writeText(table);
           const b = document.getElementById('copyDiscordBtn');
           b.innerText = '✓ Copied!';
-          setTimeout(() => { b.innerText = '📋 Copy for Discord'; }, 2000);
+          setTimeout(() => { b.innerText = 'Copy for Discord'; }, 2000);
         };
 
         // CSV Export
