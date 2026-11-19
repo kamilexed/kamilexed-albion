@@ -1130,6 +1130,14 @@
             </div>
             <div class="kpi-sub">Minimum unit price to break even</div>
           </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Crafted Cost / Unit</div>
+            <div id="unitCraftCostVal" class="kpi-val" style="color: var(--accent);" data-tooltip="Exact net refining cost per finished bar (materials + station + buy fees, after RRR &amp; leftovers)">
+              0 Silver
+            </div>
+            <div id="unitCraftCostSub" class="kpi-sub">vs 0 Market</div>
+          </div>
         </div>
 
         <!-- Recursive Production Chain Card -->
@@ -2430,6 +2438,7 @@
         let displayTotalFocusSpent = 0;
         let displayRefinedProduced = 0;
         let displayBreakEven = 0;
+        let displayUnitCraftCost = 0;
         let activeStagesForExport = null;
 
         if (isRecursive && selectedTier > 2) {
@@ -2486,6 +2495,7 @@
           displayTotalFocusSpent = recSim.totalFocusSpent;
           displayRefinedProduced = recSim.totalRefinedProduced;
           displayBreakEven = recSim.breakEvenPrice;
+          displayUnitCraftCost = recSim.totalRefinedProduced > 0 ? recSim.totalRecursiveExpense / recSim.totalRefinedProduced : 0;
 
           document.getElementById('recursiveStagesCount').innerText = `${recSim.stages.length} Tiers (T2 to T${selectedTier})`;
           recursiveTableBody.innerHTML = '';
@@ -2585,6 +2595,7 @@
           displayTotalFocusSpent = sim.totalFocusSpent;
           displayRefinedProduced = sim.totalRefinedProduced;
           displayBreakEven = sim.breakEvenPrice;
+          displayUnitCraftCost = sim.totalRefinedProduced > 0 ? sim.effectiveExpense / sim.totalRefinedProduced : 0;
 
           document.getElementById('labelRawCost').innerText = `Initial Raw Material Cost (${sim.initialRawUnits.toLocaleString()} units)`;
           document.getElementById('rowRawCost').innerText = `-${Math.round(sim.totalRawCost).toLocaleString()}`;
@@ -2664,6 +2675,19 @@
         }
 
         document.getElementById('breakEvenVal').innerText = `${displayBreakEven.toLocaleString()} Silver`;
+
+        const unitCostVal = document.getElementById('unitCraftCostVal');
+        const unitCostSub = document.getElementById('unitCraftCostSub');
+        unitCostVal.innerText = `${Math.round(displayUnitCraftCost).toLocaleString()} Silver`;
+        if (curSellPrice > 0) {
+          const diffPct = ((displayUnitCraftCost - curSellPrice) / curSellPrice) * 100;
+          const isCheaper = displayUnitCraftCost <= curSellPrice;
+          unitCostSub.innerText = `vs ${curSellPrice.toLocaleString()} Market (${diffPct > 0 ? '+' : ''}${diffPct.toFixed(1)}%)`;
+          unitCostSub.style.color = isCheaper ? 'var(--success)' : 'var(--danger)';
+        } else {
+          unitCostSub.innerText = 'Net cost per unit produced';
+          unitCostSub.style.color = 'var(--text-muted)';
+        }
 
         // Discord Export
         document.getElementById('copyDiscordBtn').onclick = () => {

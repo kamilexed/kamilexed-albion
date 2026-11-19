@@ -1039,6 +1039,14 @@
             </div>
             <div class="kpi-sub">Minimum unit price to break even</div>
           </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Grown Cost / Unit</div>
+            <div id="unitCraftCostVal" class="kpi-val" style="color: var(--accent);" data-tooltip="Exact net cost per harvested unit (replacement seed cost minus net surplus seed sales)">
+              0 Silver
+            </div>
+            <div id="unitCraftCostSub" class="kpi-sub">vs 0 Market</div>
+          </div>
         </div>
 
         <!-- Financial Breakdown & Export -->
@@ -1919,6 +1927,24 @@
         }
 
         document.getElementById('breakEvenVal').innerText = `${sim.breakEvenPrice.toLocaleString()} Silver`;
+
+        const netGrowExpense = sim.totalExpense - (sim.seedSurplusGross - sim.seedSurplusTax);
+        const unitGrowCost = sim.totalHarvest > 0 ? netGrowExpense / sim.totalHarvest : 0;
+        const unitCostVal = document.getElementById('unitCraftCostVal');
+        const unitCostSub = document.getElementById('unitCraftCostSub');
+        unitCostVal.innerText = `${Math.round(unitGrowCost).toLocaleString()} Silver`;
+        if (unitGrowCost < 0) {
+          unitCostSub.innerText = `Surplus seeds pay for harvest!`;
+          unitCostSub.style.color = 'var(--success)';
+        } else if (curOutputPrice > 0) {
+          const diffPct = ((unitGrowCost - curOutputPrice) / curOutputPrice) * 100;
+          const isCheaper = unitGrowCost <= curOutputPrice;
+          unitCostSub.innerText = `vs ${curOutputPrice.toLocaleString()} Market (${diffPct > 0 ? '+' : ''}${diffPct.toFixed(1)}%)`;
+          unitCostSub.style.color = isCheaper ? 'var(--success)' : 'var(--danger)';
+        } else {
+          unitCostSub.innerText = 'Net cost per unit harvested';
+          unitCostSub.style.color = 'var(--text-muted)';
+        }
 
         // Breakdown Table
         if (sim.seedDeficit > 0.001) {
