@@ -1,0 +1,2112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Albion Online — Farming Calculator</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
+  <script src="albion_farming_rules.js?v=20261119-1"></script>
+  <script src="albion_api.js?v=20261119-1"></script>
+  <style>
+    :root {
+      --bg: #000000;
+      --surface: #141312;
+      --surface-alt: #1c1a17;
+      --surface-well: #0c0b0a;
+      --surface-hover: #26221e;
+      --border: #d4751c;
+      --border-subtle: #383028;
+      --text: #f5f5f5;
+      --text-muted: #a8a29e;
+      --accent: #e07b1d;
+      --accent-active-bg: #3b2410;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #eab308;
+      --cyan: #38bdf8;
+      --purple: #c084fc;
+      --gold: #facc15;
+
+      /* Albion Tier Colors */
+      --t1-color: #d4d4d8;
+      --t2-color: #86efac;
+      --t3-color: #86efac;
+      --t4-color: #60a5fa;
+      --t5-color: #f87171;
+      --t6-color: #fb923c;
+      --t7-color: #facc15;
+      --t8-color: #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.45;
+      min-height: 100vh;
+    }
+
+    /* Full-Height Fixed Left Side Menu */
+    .left-sidebar {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      bottom: 12px;
+      width: 64px;
+      z-index: 300;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 8px;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.18s ease;
+      overflow: hidden;
+    }
+
+    .left-sidebar.expanded {
+      width: 200px;
+      padding: 12px 14px;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+      border-bottom: 1.5px solid var(--border);
+      min-height: 32px;
+    }
+
+    .left-sidebar.expanded .sidebar-header {
+      justify-content: space-between;
+    }
+
+    .sidebar-title {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--accent);
+      white-space: nowrap;
+      display: none;
+    }
+
+    .left-sidebar.expanded .sidebar-title {
+      display: block;
+    }
+
+    .sidebar-toggle-btn {
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      width: 38px;
+      height: 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .sidebar-toggle-btn:hover {
+      background: var(--surface-hover);
+      border-color: var(--border);
+    }
+
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 6px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--text-muted);
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      line-height: 1;
+    }
+    .sidebar-link:hover {
+      background: var(--surface-hover);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    .sidebar-link.active {
+      background: var(--accent-active-bg);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    .sidebar-link-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .sidebar-link-label {
+      display: none;
+      line-height: 1;
+    }
+    .left-sidebar.expanded .sidebar-link-label {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    /* Main Content Area stretched from Side Menu to Right Edge */
+    .main-shell {
+      margin-left: 88px;
+      padding: 0 12px 28px 4px;
+      transition: margin-left 0.18s ease;
+    }
+    body.sidebar-expanded .main-shell {
+      margin-left: 224px;
+    }
+
+    /* Sticky Top Island (Always 2 Button Rows Tall) */
+    .sticky-top-wrapper {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: var(--bg);
+      padding: 12px 0 10px 0;
+    }
+
+    .top-island {
+      width: 100%;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .top-island-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+
+    .controls-cluster {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Flat Card Styling */
+    .card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+
+    .card-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .options-card { text-align: center; }
+    .options-card .section-label { text-align: center; }
+    .options-card .field-label { justify-content: center; gap: 6px; }
+    .options-card .field-input,
+    .options-card select.field-input,
+    .options-card .inline-input {
+      text-align: center;
+      text-align-last: center;
+    }
+    .options-card .options-center-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pill-select, .btn-toggle {
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      padding: 6px 11px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s;
+    }
+
+    .pill-select:hover, .btn-toggle:hover {
+      background: var(--surface-hover);
+      border-color: var(--border);
+    }
+
+    .btn-toggle.active {
+      background: var(--accent-active-bg);
+      border-color: var(--border);
+      color: #ffffff;
+    }
+
+    .pill-select:disabled, .btn-toggle:disabled, .btn-item:disabled {
+      opacity: 0.4;
+      filter: grayscale(0.8);
+      cursor: not-allowed;
+      border-color: var(--border-subtle) !important;
+      background: #0d0c0b !important;
+    }
+
+    /* Main Grid Layout */
+    .main-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 4px;
+    }
+
+    @media (min-width: 1120px) {
+      .main-layout.has-sidebar {
+        display: grid;
+        grid-template-columns: 1fr 410px;
+        gap: 16px;
+        align-items: start;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .left-sidebar, .left-sidebar.expanded {
+        position: static;
+        width: 100%;
+        margin: 10px 0 0 0;
+      }
+      .main-shell, body.sidebar-expanded .main-shell {
+        margin-left: 0;
+        padding: 0 10px 24px 10px;
+      }
+      .left-sidebar .sidebar-title,
+      .left-sidebar .sidebar-link-label {
+        display: inline-flex;
+      }
+    }
+
+    .main-column {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 860px) {
+      .grid-2 { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* Selector Button Groups */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .btn-item {
+      flex: 1 1 auto;
+      min-width: fit-content;
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s;
+    }
+
+    .btn-item:hover {
+      background: var(--surface-hover);
+      border-color: var(--border);
+    }
+
+    .btn-item.active {
+      background: var(--accent-active-bg);
+      border-color: var(--border);
+    }
+
+    .btn-item .sub {
+      font-size: 10px;
+      opacity: 0.85;
+      font-weight: 500;
+      display: block;
+      margin-top: 2px;
+    }
+
+    .crop-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .crop-btn-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      justify-content: center;
+    }
+
+    .crop-btn-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      background: #000000;
+      border: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+
+    /* Tier Color Classes */
+    .tier-color-1 { color: var(--t1-color) !important; }
+    .tier-color-2, .tier-color-3 { color: var(--t2-color) !important; }
+    .tier-color-4 { color: var(--t4-color) !important; }
+    .tier-color-5 { color: var(--t5-color) !important; }
+    .tier-color-6 { color: var(--t6-color) !important; }
+    .tier-color-7 { color: var(--t7-color) !important; }
+    .tier-color-8 { color: var(--t8-color) !important; }
+
+    /* Callout Bar */
+    .recipe-callout {
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .recipe-items { display: flex; align-items: center; gap: 8px; }
+
+    .item-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 6px;
+      background: #000000;
+      border: 1px solid var(--border-subtle);
+      vertical-align: middle;
+    }
+
+    .matrix-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 6px;
+      background: #000000;
+      border: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+
+    /* Inputs */
+    .field-row { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 12px; }
+    @media (min-width: 600px) {
+      .field-row-2 { grid-template-columns: 1fr 1fr; }
+      .field-row-auto { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    }
+
+    .field-box {
+      background: var(--surface-alt);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .field-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .field-input {
+      width: 100%;
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: 700;
+      outline: none;
+    }
+    .field-input:focus { border-color: var(--border); }
+
+    .inline-input {
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 12px;
+      outline: none;
+    }
+    .inline-input:focus { border-color: var(--border); }
+
+    /* Clickable Price Age Indicator */
+    .price-age {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-family: monospace;
+      cursor: pointer;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      transition: border-color 0.12s, opacity 0.12s;
+    }
+    .price-age:hover { border-color: var(--border); opacity: 0.9; }
+    .price-age:disabled { cursor: wait; opacity: 0.6; }
+    .age-fresh { background: #0f291a; color: var(--success); border-color: #166534; }
+    .age-moderate { background: #29200b; color: var(--gold); border-color: #854d0e; }
+    .age-stale { background: var(--surface-well); color: var(--text-muted); border-color: var(--border-subtle); }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .kpi-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .kpi-val {
+      font-size: 20px;
+      font-weight: 800;
+      font-family: monospace;
+      line-height: 1.2;
+    }
+
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      font-family: monospace;
+    }
+
+    /* Tables */
+    .breakdown-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .breakdown-table th {
+      text-align: left;
+      padding: 8px 10px;
+      color: var(--text-muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .breakdown-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-family: monospace;
+    }
+
+    .breakdown-table td:last-child { text-align: right; font-weight: 700; }
+    .breakdown-table tr:last-child td { border-bottom: none; }
+
+    .text-pos { color: var(--success); }
+    .text-neg { color: var(--danger); }
+    .text-accent { color: var(--accent); }
+
+    /* Tooltip */
+    [data-tooltip] { position: relative; cursor: help; border-bottom: 1px dotted #737373; }
+    [data-tooltip]:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface-well);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      width: max-content;
+      max-width: 300px;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    /* Action Buttons */
+    .btn-action {
+      background: var(--accent);
+      color: #000000;
+      border: 1px solid var(--border);
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-action:hover { background: #f08a24; }
+    .btn-action:disabled { opacity: 0.6; cursor: wait; }
+
+    .btn-secondary {
+      background: var(--surface-well);
+      color: var(--text);
+      border: 1px solid var(--border-subtle);
+    }
+    .btn-secondary:hover { background: var(--surface-hover); border-color: var(--border); }
+
+    /* Side Item Prices Panel */
+    .side-price-panel {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      height: fit-content;
+      position: sticky;
+      top: 118px;
+    }
+
+    .price-matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      font-family: monospace;
+    }
+
+    .price-matrix-table tr { border-bottom: 1px solid var(--border-subtle); }
+    .price-matrix-table th {
+      text-align: left;
+      padding: 6px 5px;
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      border-bottom: 1.5px solid var(--border);
+    }
+    .price-matrix-table td { padding: 8px 5px; vertical-align: middle; }
+
+    .matrix-tier-cell {
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .matrix-tier-cell:hover { text-decoration: underline; }
+
+    .matrix-cell {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .matrix-input-col {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .price-matrix-input {
+      width: 88px;
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      padding: 4px 6px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-family: monospace;
+      font-weight: 700;
+      outline: none;
+    }
+    .price-matrix-input:focus { border-color: var(--border); }
+
+    /* Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-backdrop.open { display: flex; }
+
+    .modal-box {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 540px;
+      padding: 20px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .spec-card {
+      background: var(--surface-alt);
+      border: 1px solid var(--border-subtle);
+      padding: 10px 12px;
+      border-radius: 8px;
+    }
+
+    .spec-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Full-Height Left Side Menu (Top to Bottom) -->
+  <aside id="leftSidebar" class="left-sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Tools</span>
+      <button id="sidebarToggleBtn" class="sidebar-toggle-btn" type="button" title="Expand/Collapse Menu">
+        ☰
+      </button>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="refining.html" class="sidebar-link" title="Refining Calculator">
+        <span class="sidebar-link-icon">🔨</span>
+        <span class="sidebar-link-label">Refining</span>
+      </a>
+      <a href="farming.html" class="sidebar-link active" title="Farming Calculator">
+        <span class="sidebar-link-icon">🌱</span>
+        <span class="sidebar-link-label">Farming</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Main Workspace Container stretched from Side Menu to Right Edge -->
+  <div class="main-shell">
+
+    <!-- Sticky Top Island (Always 2 Button Rows Tall) -->
+    <div class="sticky-top-wrapper">
+      <header class="top-island">
+        <div class="top-island-row">
+          <div class="controls-cluster">
+            <button id="premiumToggle" class="btn-toggle active" type="button" title="Premium doubles harvest yield (9 vs 4.5) and halves animal growth time">
+              Premium: <span style="color: var(--gold);">ON (4%)</span>
+            </button>
+
+            <button id="buyOrderToggle" class="btn-toggle active" type="button" title="Buy Order (2.5% setup fee) vs Instant Buy (0% fee)">
+              Buy: <span style="color: var(--accent);">Order (2.5%)</span>
+            </button>
+
+            <button id="orderTypeToggle" class="btn-toggle active" type="button" title="Sell Order (tax + 2.5% setup fee) vs Instant Sell (tax only)">
+              Sell: <span style="color: var(--accent);">Order (6.5%)</span>
+            </button>
+
+            <button id="directTradeToggle" class="btn-toggle" type="button" title="Direct player-to-player trade (0% market sales tax &amp; setup fee)">
+              Trade: <span style="color: var(--text-muted);">OFF</span>
+            </button>
+          </div>
+
+          <div class="controls-cluster">
+            <button id="openSpecsBtn" class="pill-select" type="button" style="border-color: var(--border); color: var(--t4-color);">
+              Specs (<span id="specSummaryBadge">100/100</span>)
+            </button>
+
+            <button id="togglePriceMatrixBtn" class="btn-toggle active" type="button">
+              Item Prices
+            </button>
+          </div>
+        </div>
+
+        <div class="top-island-row">
+          <div class="controls-cluster">
+            <button id="focusToggle" class="btn-toggle active" type="button" title="Water crops/herbs or nurture animals with Focus">
+              ⚡ Focus: <span style="color: var(--cyan);">ON</span>
+            </button>
+
+            <select id="waterModeSelect" class="pill-select" style="color: var(--cyan);" title="How many tiles to water/nurture with Focus">
+              <option value="all">⚡ Water: All (100%)</option>
+              <option value="self_sustain">⚡ Water: Self-Sustain (50%)</option>
+              <option value="custom">⚡ Water: Custom Tiles</option>
+              <option value="none">⚡ Water: None (0%)</option>
+            </select>
+
+            <button id="npcCapToggle" class="btn-toggle active" type="button" title="Automatically buy seeds/babies from Farming Merchant NPC if cheaper than Market">
+              NPC Seed Cap: <span style="color: var(--success);">ON</span>
+            </button>
+
+            <button id="animalModeToggle" class="btn-toggle" type="button" style="display: none;" title="Raise &amp; sell grown animals vs keep grown animals to harvest Eggs/Milk daily">
+              Animal Mode: <span style="color: var(--gold);">Raise Grown</span>
+            </button>
+
+            <button id="favFoodToggle" class="btn-toggle active" type="button" style="display: none;" title="Favorite food halves required crops per animal (9 vs 18)">
+              Favorite Food: <span style="color: var(--success);">ON (9)</span>
+            </button>
+          </div>
+        </div>
+      </header>
+    </div>
+
+    <!-- Calculator + Item Prices Grid -->
+    <div id="mainLayout" class="main-layout has-sidebar">
+
+      <!-- Main Calculator Column -->
+      <div class="main-column">
+
+        <!-- Top 2-Column Config Grid -->
+        <div class="grid-2">
+
+          <!-- Card 1: Farm & Crop Selection -->
+          <section class="card">
+            <div class="card-header">
+              <h2 class="card-title">1. Farm &amp; Crop Selection</h2>
+              <span id="bonusCityLabel" style="font-size: 11px; color: var(--gold); font-family: monospace; font-weight: 700;">
+                +10% Bonus: Lymhurst
+              </span>
+            </div>
+
+            <div class="section-label">Farming Category</div>
+            <div class="btn-group" id="categoryGroup"></div>
+
+            <div class="section-label" id="itemSelectLabel">Select Crop</div>
+            <div class="crop-grid" id="itemGroup"></div>
+
+            <div class="recipe-callout">
+              <div class="recipe-items">
+                <img id="seedIcon" class="item-icon" src="" alt="Seed">
+                <span style="font-weight: 700; color: var(--success);">➔</span>
+                <img id="outputIcon" class="item-icon" src="" alt="Output">
+              </div>
+              <div style="text-align: right; font-family: monospace;">
+                <div id="recipeText" style="font-size: 12px; font-weight: 700;"></div>
+                <div id="returnRateSub" style="font-size: 10px; color: var(--text-muted);"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Card 2: Options -->
+          <section class="card options-card">
+            <div class="card-header">
+              <h2 class="card-title">2. Options</h2>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 11px; color: var(--text-muted);">Yield / Tile:</span>
+                <span id="yieldBadge" style="font-size: 12px; font-weight: 800; font-family: monospace; color: var(--success); background: var(--surface-well); border: 1px solid var(--success); padding: 2px 8px; border-radius: 6px;" data-tooltip="Average harvest per planted tile">
+                  9.9 / tile
+                </span>
+              </div>
+            </div>
+
+            <div class="section-label">Island Location (+10% Biome Bonus)</div>
+            <div class="btn-group" id="cityGroup"></div>
+
+            <!-- Plots & Watered Tiles -->
+            <div class="field-row field-row-2" style="margin-bottom: 12px;">
+              <div class="field-box">
+                <div class="field-label">
+                  <span>Plots (×9 Tiles)</span>
+                  <span id="totalTilesBadge" style="font-size: 10px; color: var(--accent);">45 tiles</span>
+                </div>
+                <input type="number" id="plotsInput" min="1" value="5" class="field-input" style="color: var(--gold);">
+              </div>
+
+              <div class="field-box">
+                <div class="field-label">
+                  <span>Watered / Nurtured Tiles</span>
+                  <span id="waterPctBadge" style="font-size: 10px; color: var(--cyan);">100%</span>
+                </div>
+                <input type="number" id="wateredTilesInput" min="0" value="45" class="field-input" style="color: var(--cyan);">
+              </div>
+            </div>
+
+            <!-- Focus Cost Summary Box -->
+            <div style="background: var(--surface-well); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 12px;">
+              <div class="options-center-row" style="font-size: 12px; margin-bottom: 4px;">
+                <span style="font-weight: 600; color: var(--text-muted);">Focus Cost / Tile:</span>
+                <span id="focusCostVal" style="font-weight: 800; font-family: monospace; color: var(--cyan); font-size: 14px;">125 FP</span>
+              </div>
+              <div class="options-center-row" style="font-size: 11px; color: var(--text-muted);">
+                <span>Mastery: <strong id="quickMasteryVal" style="color: var(--gold);">100</strong> | <span id="quickSpecItemLabel">Carrots</span> Spec: <strong id="quickSpecVal" style="color: var(--text);">100</strong></span>
+                <button type="button" onclick="openSpecsModal()" style="background: none; border: none; color: var(--cyan); font-weight: 700; font-size: 11px; cursor: pointer; text-decoration: underline;">
+                  Edit Specs ➔
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Card 3: Plots & Market Prices -->
+        <section class="card">
+          <div class="card-header">
+            <h2 class="card-title">3. Plots &amp; Market Prices</h2>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
+              <span style="font-size: 11px; color: var(--text-muted);">Quick Plots:</span>
+              <button class="btn-item" style="padding: 3px 8px; min-width: auto;" onclick="setPlots(1)">1 Plot</button>
+              <button class="btn-item" style="padding: 3px 8px; min-width: auto;" onclick="setPlots(5)">5 Plots</button>
+              <button class="btn-item" style="padding: 3px 8px; min-width: auto;" onclick="setPlots(16)">16 Plots</button>
+              <button class="btn-item" style="padding: 3px 8px; min-width: auto; color: var(--cyan);" onclick="fitFocusPool(10000)">10k Focus</button>
+              <button class="btn-item" style="padding: 3px 8px; min-width: auto; color: var(--cyan);" onclick="fitFocusPool(20000)">20k Focus</button>
+              <button class="btn-item" style="padding: 3px 8px; min-width: auto; color: var(--cyan);" onclick="fitFocusPool(30000)">30k Focus</button>
+            </div>
+          </div>
+
+          <div class="field-row field-row-auto">
+            <div class="field-box" id="seedPriceBox">
+              <div class="field-label">
+                <span id="seedPriceLabel">Seed Buy Price</span>
+                <button type="button" id="seedAgeBadge" class="price-age age-stale" title="Click to refresh price from Europe AODP">Manual</button>
+              </div>
+              <input type="number" id="seedPriceInput" min="0" class="field-input" value="1950">
+              <div id="npcPriceHint" style="font-size: 10px; color: var(--text-muted); font-family: monospace; margin-top: 4px;">NPC Vendor: 2,000 s</div>
+            </div>
+
+            <div class="field-box" id="feedPriceBox" style="display: none;">
+              <div class="field-label">
+                <span id="feedPriceLabel" style="color: var(--gold);">Feed Crop Buy</span>
+                <button type="button" id="feedAgeBadge" class="price-age age-stale" title="Click to refresh price from Europe AODP">Manual</button>
+              </div>
+              <input type="number" id="feedPriceInput" min="0" class="field-input" value="400" style="color: var(--gold);">
+              <div id="feedAmountHint" style="font-size: 10px; color: var(--text-muted); font-family: monospace; margin-top: 4px;">9 crops / animal</div>
+            </div>
+
+            <div class="field-box">
+              <div class="field-label">
+                <span id="outputPriceLabel">Harvest Sell Price</span>
+                <button type="button" id="outputAgeBadge" class="price-age age-stale" title="Click to refresh price from Europe AODP">Manual</button>
+              </div>
+              <input type="number" id="outputPriceInput" min="0" class="field-input" value="380" style="color: var(--success);">
+              <div id="cycleTimeHint" style="font-size: 10px; color: var(--text-muted); font-family: monospace; margin-top: 4px;">Growth Cycle: 22h</div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px;">
+            <div style="color: var(--text-muted); font-size: 11px;">
+              Active Farm: <strong id="activeFarmPreview" style="color: var(--cyan); font-family: monospace;">5 plots (45 tiles · 45 watered · 5,625 FP)</strong>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted);">
+              Fees: <strong id="appliedFeeText" style="color: var(--accent); font-family: monospace;">Sell 6.5% · Buy 2.5%</strong>
+            </div>
+          </div>
+        </section>
+
+        <!-- KPI Metrics Strip -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label" id="netProfitLabel">Net Profit / 22h Cycle</div>
+            <div id="netProfitVal" class="kpi-val text-pos">+0 Silver</div>
+            <div id="profitSub" class="kpi-sub">0 / plot · 0 / tile</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Silver / Focus (Watering)</div>
+            <div id="silverFocusVal" class="kpi-val" style="color: var(--cyan);" data-tooltip="Marginal silver gained per Focus spent watering compared to unwatered farming">
+              0 S/FP
+            </div>
+            <div id="focusRatingSub" class="kpi-sub">Spent 0 FP</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Total Harvest Output</div>
+            <div id="outputVal" class="kpi-val" style="color: var(--gold);">0 Harvested</div>
+            <div id="outputSub" class="kpi-sub">Net Seeds: 0</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Break-Even Sell Price</div>
+            <div id="breakEvenVal" class="kpi-val" style="color: var(--purple);" data-tooltip="Minimum unit sell price required to cover seed/feed costs and taxes">
+              0 Silver
+            </div>
+            <div class="kpi-sub">Minimum unit price to break even</div>
+          </div>
+        </div>
+
+        <!-- Financial Breakdown & Export -->
+        <section class="card">
+          <div class="card-header">
+            <h2 class="card-title">Financial Breakdown &amp; Export</h2>
+            <div style="display: flex; gap: 8px;">
+              <button id="copyDiscordBtn" class="btn-action btn-secondary" type="button">
+                Copy for Discord
+              </button>
+              <button id="exportCsvBtn" class="btn-action btn-secondary" type="button">
+                Export CSV
+              </button>
+            </div>
+          </div>
+
+          <table class="breakdown-table">
+            <tbody>
+              <tr id="rowSeedCostWrapper">
+                <td id="rowSeedCostLabel">Replacement Seeds Bought</td>
+                <td id="rowSeedCost" class="text-neg">-0</td>
+              </tr>
+              <tr id="rowFeedCostWrapper" style="display: none;">
+                <td id="rowFeedCostLabel">Animal Feed Consumed</td>
+                <td id="rowFeedCost" class="text-neg">-0</td>
+              </tr>
+              <tr id="rowBuyFeeWrapper" style="display: none;">
+                <td>Buy Order Setup Fee (+2.5%)</td>
+                <td id="rowBuyFee" class="text-neg">-0</td>
+              </tr>
+              <tr style="background: var(--surface-alt); font-weight: 800;">
+                <td>TOTAL FARMING EXPENSE</td>
+                <td id="rowTotalExpense" class="text-neg">-0</td>
+              </tr>
+              <tr>
+                <td id="rowHarvestRevLabel">Gross Harvest Sales</td>
+                <td id="rowGrossRevenue" class="text-pos">+0</td>
+              </tr>
+              <tr id="rowSurplusSeedWrapper" style="display: none;">
+                <td id="rowSurplusSeedLabel">Surplus Seeds / Offspring Sales</td>
+                <td id="rowSurplusSeed" class="text-pos">+0</td>
+              </tr>
+              <tr>
+                <td>Market Taxes &amp; Setup Fees</td>
+                <td id="rowMarketTax" class="text-neg">-0</td>
+              </tr>
+              <tr style="background: var(--surface-well); font-weight: 900; font-size: 13px;">
+                <td>FINAL NET PROFIT</td>
+                <td id="rowNetProfit" class="text-pos">+0 Silver</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+      </div>
+
+      <!-- Right Column: Item Prices Side Window -->
+      <aside id="priceMatrixSidebar" class="side-price-panel">
+        <div class="card-header" style="margin-bottom: 10px; padding-bottom: 8px;">
+          <div>
+            <h3 class="card-title" style="font-size: 12px;">Item Prices</h3>
+            <div style="font-size: 10px; color: var(--text-muted);" id="sideResourceName">All Crops (Lymhurst · EU)</div>
+          </div>
+          <button id="fetchAllPricesBtn" class="btn-action" type="button" style="padding: 5px 11px; font-size: 11px;">
+            Fetch Prices
+          </button>
+        </div>
+
+        <div style="max-height: 75vh; overflow-y: auto; padding-right: 4px;">
+          <table class="price-matrix-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th id="matrixCol1Header">Seed Buy</th>
+                <th id="matrixCol2Header">Harvest Sell</th>
+              </tr>
+            </thead>
+            <tbody id="priceMatrixBody"></tbody>
+          </table>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+  <!-- Destiny Board Farming Specs Modal -->
+  <div id="specsModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="card-header">
+        <h2 class="card-title" style="font-size: 15px;">Destiny Board Farming Specs</h2>
+        <button type="button" onclick="closeSpecsModal()" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer;">✕</button>
+      </div>
+
+      <div id="modalSpecsContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;"></div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 12px;">
+        <div style="font-size: 12px; color: var(--text-muted);">
+          Active Focus Cost: <strong id="modalFocusPreview" style="color: var(--cyan); font-family: monospace;">125 FP / tile</strong>
+        </div>
+        <button type="button" class="btn-action" onclick="closeSpecsModal()">Save &amp; Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const F = window.AlbionFarmingRules;
+      const API = window.AlbionApi;
+      const SERVER = 'europe';
+      const SESSION_STORAGE_KEY = 'ALBION_FARMING_SESSION_V1';
+      const SPECS_STORAGE_KEY = 'ALBION_FARMING_SPECS_V1';
+
+      // State
+      let selectedCategory = 'crops';
+      let selectedItem = F.ITEMS.find(i => i.id === 'carrot');
+      let selectedCity = F.ISLAND_CITIES[0]; // Lymhurst
+      let hasPremium = true;
+      let buyOrderType = 'buy_order';
+      let orderType = 'sell_order';
+      let directTrade = false;
+      let useFocus = true;
+      let waterMode = 'all'; // 'all' | 'self_sustain' | 'custom' | 'none'
+      let useNpcCap = true;
+      let animalMode = 'grown'; // 'grown' | 'produce'
+      let useFavoriteFood = true;
+      let plots = 5;
+      let customWateredTiles = 45;
+      let extraTiles = 0;
+
+      // Destiny Board Farming Specs (Mastery 0-100 per category + Spec 0-100 per item)
+      let masteries = { crops: 100, herbs: 100, animals: 100 };
+      let itemSpecs = {};
+      F.ITEMS.forEach(item => { itemSpecs[item.id] = 100; });
+
+      try {
+        const savedSpecs = localStorage.getItem(SPECS_STORAGE_KEY);
+        if (savedSpecs) {
+          const parsed = JSON.parse(savedSpecs);
+          if (parsed.masteries) masteries = { ...masteries, ...parsed.masteries };
+          if (parsed.itemSpecs) itemSpecs = { ...itemSpecs, ...parsed.itemSpecs };
+        }
+      } catch (e) {}
+
+      // Seed offline price store
+      const priceStore = new Map();
+      F.ITEMS.forEach(item => {
+        if (item.seedId) priceStore.set(item.seedId, { price: item.defaultSeedPrice, age: { text: 'Est.', category: 'moderate' } });
+        if (item.productId) priceStore.set(item.productId, { price: item.defaultProductPrice, age: { text: 'Est.', category: 'moderate' } });
+        if (item.grownId) priceStore.set(item.grownId, { price: item.defaultGrownPrice, age: { text: 'Est.', category: 'moderate' } });
+      });
+
+      // DOM References
+      const leftSidebar = document.getElementById('leftSidebar');
+      const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+      const premiumToggle = document.getElementById('premiumToggle');
+      const buyOrderToggle = document.getElementById('buyOrderToggle');
+      const orderTypeToggle = document.getElementById('orderTypeToggle');
+      const directTradeToggle = document.getElementById('directTradeToggle');
+      const focusToggle = document.getElementById('focusToggle');
+      const waterModeSelect = document.getElementById('waterModeSelect');
+      const npcCapToggle = document.getElementById('npcCapToggle');
+      const animalModeToggle = document.getElementById('animalModeToggle');
+      const favFoodToggle = document.getElementById('favFoodToggle');
+      const categoryGroup = document.getElementById('categoryGroup');
+      const itemGroup = document.getElementById('itemGroup');
+      const cityGroup = document.getElementById('cityGroup');
+      const plotsInput = document.getElementById('plotsInput');
+      const wateredTilesInput = document.getElementById('wateredTilesInput');
+      const seedPriceBox = document.getElementById('seedPriceBox');
+      const seedPriceInput = document.getElementById('seedPriceInput');
+      const feedPriceBox = document.getElementById('feedPriceBox');
+      const feedPriceInput = document.getElementById('feedPriceInput');
+      const outputPriceInput = document.getElementById('outputPriceInput');
+      const appliedFeeText = document.getElementById('appliedFeeText');
+      const priceMatrixBody = document.getElementById('priceMatrixBody');
+      const priceMatrixSidebar = document.getElementById('priceMatrixSidebar');
+      const togglePriceMatrixBtn = document.getElementById('togglePriceMatrixBtn');
+      const fetchAllPricesBtn = document.getElementById('fetchAllPricesBtn');
+      const mainLayout = document.getElementById('mainLayout');
+      const specsModal = document.getElementById('specsModal');
+      const openSpecsBtn = document.getElementById('openSpecsBtn');
+
+      function bindNonNegativeInput(el, minVal = 0) {
+        if (!el) return;
+        el.min = String(minVal);
+        el.addEventListener('keydown', (ev) => {
+          if (ev.key === '-' || ev.key === 'e' || ev.key === 'E' || ev.key === '+') {
+            ev.preventDefault();
+          }
+        });
+        el.addEventListener('blur', () => {
+          const parsed = parseFloat(el.value);
+          if (Number.isNaN(parsed) || parsed < minVal) {
+            el.value = minVal;
+          }
+        });
+      }
+
+      bindNonNegativeInput(plotsInput, 1);
+      bindNonNegativeInput(wateredTilesInput, 0);
+      bindNonNegativeInput(seedPriceInput, 0);
+      bindNonNegativeInput(feedPriceInput, 0);
+      bindNonNegativeInput(outputPriceInput, 0);
+
+      sidebarToggleBtn.onclick = () => {
+        const expanded = leftSidebar.classList.toggle('expanded');
+        document.body.classList.toggle('sidebar-expanded', expanded);
+        sidebarToggleBtn.innerText = expanded ? '✕' : '☰';
+        saveSession();
+      };
+
+      function setItemPrice(id, price, age = { text: 'Manual', category: 'stale' }) {
+        priceStore.set(id, { price: Math.max(0, parseInt(price) || 0), age });
+      }
+
+      function getActiveOutputItemId() {
+        if (selectedItem.category === 'animals') {
+          const mode = (animalMode === 'produce' && selectedItem.productId) ? 'produce' : 'grown';
+          return mode === 'produce' ? selectedItem.productId : selectedItem.grownId;
+        }
+        return selectedItem.productId;
+      }
+
+      function getActiveFeedItemId() {
+        if (selectedItem.category !== 'animals') return null;
+        return useFavoriteFood ? selectedItem.favoriteFoodId : 'T1_CARROT';
+      }
+
+      function syncControlsUI() {
+        const sellTaxPct = ((directTrade ? 0.0 : F.getMarketFeeRate({ hasPremium, orderType, directTrade })) * 100).toFixed(1).replace(/\.0$/, '');
+        const buyTaxPct = (F.getBuyFeeRate({ buyOrderType }) * 100).toFixed(1).replace(/\.0$/, '');
+
+        premiumToggle.className = 'btn-toggle' + (hasPremium ? ' active' : '');
+        premiumToggle.innerHTML = `Premium: <span style="color: ${hasPremium ? 'var(--gold)' : 'var(--danger)'};">${hasPremium ? 'ON (4%)' : 'OFF (8%)'}</span>`;
+
+        buyOrderToggle.className = 'btn-toggle' + (buyOrderType === 'buy_order' ? ' active' : '');
+        buyOrderToggle.innerHTML = `Buy: <span style="color: ${buyOrderType === 'buy_order' ? 'var(--accent)' : 'var(--success)'};">${buyOrderType === 'buy_order' ? `Order (${buyTaxPct}%)` : `Instant (${buyTaxPct}%)`}</span>`;
+
+        orderTypeToggle.disabled = directTrade;
+        orderTypeToggle.className = 'btn-toggle' + (!directTrade && orderType === 'sell_order' ? ' active' : '');
+        orderTypeToggle.innerHTML = directTrade
+          ? `Sell: <span style="color: var(--text-muted);">Trade (0%)</span>`
+          : `Sell: <span style="color: var(--accent);">${orderType === 'sell_order' ? `Order (${sellTaxPct}%)` : `Instant (${sellTaxPct}%)`}</span>`;
+
+        directTradeToggle.className = 'btn-toggle' + (directTrade ? ' active' : '');
+        directTradeToggle.innerHTML = `Trade: <span style="color: ${directTrade ? 'var(--success)' : 'var(--text-muted)'};">${directTrade ? 'ON (0%)' : 'OFF'}</span>`;
+
+        npcCapToggle.className = 'btn-toggle' + (useNpcCap ? ' active' : '');
+        npcCapToggle.innerHTML = `NPC Seed Cap: <span style="color: ${useNpcCap ? 'var(--success)' : 'var(--text-muted)'};">${useNpcCap ? 'ON' : 'OFF'}</span>`;
+
+        const isAnimal = selectedItem.category === 'animals';
+        const effectiveAnimMode = (isAnimal && animalMode === 'produce' && selectedItem.productId) ? 'produce' : 'grown';
+        animalModeToggle.style.display = isAnimal ? 'inline-flex' : 'none';
+        animalModeToggle.disabled = isAnimal && !selectedItem.productId;
+        animalModeToggle.className = 'btn-toggle' + (effectiveAnimMode === 'produce' ? ' active' : '');
+        animalModeToggle.innerHTML = `Animal Mode: <span style="color: var(--gold);">${effectiveAnimMode === 'produce' ? 'Eggs / Milk' : 'Raise Grown'}</span>`;
+
+        favFoodToggle.style.display = isAnimal ? 'inline-flex' : 'none';
+        favFoodToggle.className = 'btn-toggle' + (useFavoriteFood ? ' active' : '');
+        favFoodToggle.innerHTML = `Favorite Food: <span style="color: ${useFavoriteFood ? 'var(--success)' : 'var(--text-muted)'};">${useFavoriteFood ? 'ON (9)' : 'OFF (18)'}</span>`;
+
+        waterModeSelect.value = waterMode;
+        plotsInput.value = plots;
+      }
+
+      function saveSession() {
+        try {
+          const savedPrices = {};
+          priceStore.forEach((val, key) => {
+            if (val && val.age && val.age.text !== 'Est.') {
+              savedPrices[key] = val;
+            }
+          });
+          const payload = {
+            category: selectedCategory,
+            itemId: selectedItem.id,
+            cityId: selectedCity.id,
+            hasPremium,
+            buyOrderType,
+            orderType,
+            directTrade,
+            useFocus,
+            waterMode,
+            useNpcCap,
+            animalMode,
+            useFavoriteFood,
+            plots,
+            extraTiles,
+            customWateredTiles,
+            sidebarExpanded: leftSidebar.classList.contains('expanded'),
+            priceMatrixVisible: mainLayout.classList.contains('has-sidebar'),
+            prices: savedPrices,
+          };
+          localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload));
+        } catch (e) {}
+      }
+
+      function loadSession() {
+        try {
+          const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+          if (!raw) return;
+          const s = JSON.parse(raw);
+          if (!s || typeof s !== 'object') return;
+
+          if (['crops', 'herbs', 'animals'].includes(s.category)) selectedCategory = s.category;
+          if (s.itemId) {
+            const foundItem = F.ITEMS.find(i => i.id === s.itemId);
+            if (foundItem) {
+              selectedItem = foundItem;
+              selectedCategory = foundItem.category;
+            }
+          }
+          if (s.cityId) {
+            const foundCity = F.ISLAND_CITIES.find(c => c.id === s.cityId);
+            if (foundCity) selectedCity = foundCity;
+          }
+          if (typeof s.hasPremium === 'boolean') hasPremium = s.hasPremium;
+          if (s.buyOrderType === 'buy_order' || s.buyOrderType === 'instant_buy') buyOrderType = s.buyOrderType;
+          if (s.orderType === 'sell_order' || s.orderType === 'instant_sell') orderType = s.orderType;
+          if (typeof s.directTrade === 'boolean') directTrade = s.directTrade;
+          if (typeof s.useFocus === 'boolean') useFocus = s.useFocus;
+          if (['all', 'self_sustain', 'custom', 'none'].includes(s.waterMode)) waterMode = s.waterMode;
+          if (typeof s.useNpcCap === 'boolean') useNpcCap = s.useNpcCap;
+          if (s.animalMode === 'grown' || s.animalMode === 'produce') animalMode = s.animalMode;
+          if (typeof s.useFavoriteFood === 'boolean') useFavoriteFood = s.useFavoriteFood;
+          if (typeof s.plots === 'number' && !Number.isNaN(s.plots)) plots = Math.max(1, Math.round(s.plots));
+          if (typeof s.extraTiles === 'number' && !Number.isNaN(s.extraTiles)) extraTiles = Math.max(0, Math.round(s.extraTiles));
+          if (typeof s.customWateredTiles === 'number' && !Number.isNaN(s.customWateredTiles)) customWateredTiles = Math.max(0, Math.round(s.customWateredTiles));
+
+          if (typeof s.sidebarExpanded === 'boolean') {
+            leftSidebar.classList.toggle('expanded', s.sidebarExpanded);
+            document.body.classList.toggle('sidebar-expanded', s.sidebarExpanded);
+            sidebarToggleBtn.innerText = s.sidebarExpanded ? '✕' : '☰';
+          }
+          if (typeof s.priceMatrixVisible === 'boolean') {
+            mainLayout.classList.toggle('has-sidebar', s.priceMatrixVisible);
+            priceMatrixSidebar.style.display = s.priceMatrixVisible ? 'block' : 'none';
+            togglePriceMatrixBtn.className = 'btn-toggle' + (s.priceMatrixVisible ? ' active' : '');
+          }
+          if (s.prices && typeof s.prices === 'object') {
+            Object.entries(s.prices).forEach(([id, entry]) => {
+              if (entry && typeof entry.price === 'number') {
+                priceStore.set(id, {
+                  price: Math.max(0, Math.round(entry.price)),
+                  age: entry.age && entry.age.text ? entry.age : { text: 'Saved', category: 'moderate' },
+                });
+              }
+            });
+          }
+        } catch (e) {}
+      }
+
+      async function refreshSingleItemPrice(itemId, badgeEl) {
+        if (!itemId) return;
+        const originalText = badgeEl.innerText;
+        badgeEl.innerText = '⏳...';
+        badgeEl.disabled = true;
+
+        try {
+          const res = await API.fetchPrices({
+            server: SERVER,
+            itemIds: [itemId],
+            locations: selectedCity.id !== 'None' ? selectedCity.name : '',
+            forceRefresh: true,
+          });
+
+          if (res.data && res.data.length > 0) {
+            let bestEntry = null;
+            res.data.forEach(entry => {
+              const p = entry.sell_price_min > 0 ? entry.sell_price_min : entry.buy_price_max;
+              if (p > 0 && (!bestEntry || p < (bestEntry.sell_price_min || bestEntry.buy_price_max))) {
+                bestEntry = entry;
+              }
+            });
+            if (bestEntry) {
+              const p = bestEntry.sell_price_min > 0 ? bestEntry.sell_price_min : bestEntry.buy_price_max;
+              const age = API.formatPriceAge(bestEntry.sell_price_min_date);
+              setItemPrice(itemId, p, age);
+            } else {
+              badgeEl.innerText = 'No data';
+              setTimeout(() => renderPriceMatrix(), 1200);
+            }
+          } else {
+            badgeEl.innerText = 'No data';
+            setTimeout(() => renderPriceMatrix(), 1200);
+          }
+        } catch (err) {
+          console.warn('Single price refresh error:', err);
+          badgeEl.innerText = originalText;
+        } finally {
+          badgeEl.disabled = false;
+          syncCurrentItemPrices();
+          render();
+          renderPriceMatrix();
+        }
+      }
+
+      function initButtons() {
+        // Categories
+        categoryGroup.innerHTML = '';
+        F.CATEGORIES.forEach(cat => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn-item' + (cat.id === selectedCategory ? ' active' : '');
+          btn.style.color = cat.color;
+          btn.innerHTML = `<div>${cat.name}</div><span class="sub" style="color: var(--text-muted);">${cat.plotName}</span>`;
+          btn.onclick = () => {
+            selectedCategory = cat.id;
+            const firstInCat = F.ITEMS.find(i => i.category === cat.id);
+            if (firstInCat) {
+              selectedItem = firstInCat;
+              const bCity = F.ISLAND_CITIES.find(c => c.id === firstInCat.bonusCity);
+              if (bCity) selectedCity = bCity;
+            }
+            syncControlsUI();
+            syncCurrentItemPrices();
+            render();
+            renderPriceMatrix();
+          };
+          categoryGroup.appendChild(btn);
+        });
+
+        // Items in active category
+        const catItems = F.ITEMS.filter(i => i.category === selectedCategory);
+        document.getElementById('itemSelectLabel').innerText =
+          selectedCategory === 'crops' ? 'Select Crop' :
+          selectedCategory === 'herbs' ? 'Select Herb' : 'Select Pasture Animal';
+
+        itemGroup.innerHTML = '';
+        catItems.forEach(item => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn-item' + (item.id === selectedItem.id ? ' active' : '');
+          const iconId = item.category === 'animals' ? item.grownId : item.productId;
+          btn.innerHTML = `
+            <div class="crop-btn-row">
+              <img class="crop-btn-icon" src="${F.getRenderUrl(iconId, 1, 32)}" alt="${item.name}">
+              <span class="tier-color-${item.tier}">T${item.tier} ${item.name}</span>
+            </div>
+            <span class="sub" style="color: var(--text-muted);">${item.bonusCity || 'No Royal Bonus'}</span>
+          `;
+          btn.onclick = () => {
+            selectedItem = item;
+            const bCity = F.ISLAND_CITIES.find(c => c.id === item.bonusCity);
+            if (bCity) selectedCity = bCity;
+            syncControlsUI();
+            syncCurrentItemPrices();
+            render();
+            renderPriceMatrix();
+          };
+          itemGroup.appendChild(btn);
+        });
+
+        // Island Locations
+        cityGroup.innerHTML = '';
+        F.ISLAND_CITIES.forEach(c => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          const isBonus = Boolean(selectedItem.bonusCity && c.id === selectedItem.bonusCity);
+          btn.className = 'btn-item' + (c.id === selectedCity.id ? ' active' : '');
+          btn.style.color = isBonus ? 'var(--gold)' : 'var(--text)';
+          btn.innerHTML = `<div>${c.name}</div>${isBonus ? '<span class="sub" style="color: var(--success);">★ +10% BONUS</span>' : ''}`;
+          btn.onclick = () => {
+            selectedCity = c;
+            render();
+            renderPriceMatrix();
+          };
+          cityGroup.appendChild(btn);
+        });
+      }
+
+      function syncCurrentItemPrices() {
+        const seedId = selectedItem.seedId;
+        const outputId = getActiveOutputItemId();
+        const feedId = getActiveFeedItemId();
+
+        if (seedId && priceStore.has(seedId)) {
+          const e = priceStore.get(seedId);
+          seedPriceInput.value = e.price;
+          const b = document.getElementById('seedAgeBadge');
+          b.innerText = e.age.text;
+          b.className = 'price-age age-' + e.age.category;
+          b.onclick = () => refreshSingleItemPrice(seedId, b);
+        }
+        if (outputId && priceStore.has(outputId)) {
+          const e = priceStore.get(outputId);
+          outputPriceInput.value = e.price;
+          const b = document.getElementById('outputAgeBadge');
+          b.innerText = e.age.text;
+          b.className = 'price-age age-' + e.age.category;
+          b.onclick = () => refreshSingleItemPrice(outputId, b);
+        }
+        if (feedId && priceStore.has(feedId)) {
+          const e = priceStore.get(feedId);
+          feedPriceInput.value = e.price;
+          const b = document.getElementById('feedAgeBadge');
+          b.innerText = e.age.text;
+          b.className = 'price-age age-' + e.age.category;
+          b.onclick = () => refreshSingleItemPrice(feedId, b);
+        }
+      }
+
+      // Top Island Event Handlers
+      premiumToggle.onclick = () => { hasPremium = !hasPremium; syncControlsUI(); render(); };
+      buyOrderToggle.onclick = () => { buyOrderType = buyOrderType === 'buy_order' ? 'instant_buy' : 'buy_order'; syncControlsUI(); render(); };
+      orderTypeToggle.onclick = () => { if (directTrade) return; orderType = orderType === 'sell_order' ? 'instant_sell' : 'sell_order'; syncControlsUI(); render(); };
+      directTradeToggle.onclick = () => { directTrade = !directTrade; syncControlsUI(); render(); };
+
+      focusToggle.onclick = () => {
+        if (waterMode === 'none') return;
+        useFocus = !useFocus;
+        render();
+      };
+
+      waterModeSelect.onchange = (e) => {
+        waterMode = e.target.value;
+        if (waterMode === 'none') {
+          useFocus = false;
+        } else {
+          useFocus = true;
+        }
+        render();
+      };
+
+      npcCapToggle.onclick = () => { useNpcCap = !useNpcCap; syncControlsUI(); render(); };
+
+      animalModeToggle.onclick = () => {
+        if (selectedItem.category !== 'animals' || !selectedItem.productId) return;
+        animalMode = animalMode === 'grown' ? 'produce' : 'grown';
+        syncControlsUI();
+        syncCurrentItemPrices();
+        render();
+        renderPriceMatrix();
+      };
+
+      favFoodToggle.onclick = () => {
+        useFavoriteFood = !useFavoriteFood;
+        syncControlsUI();
+        syncCurrentItemPrices();
+        render();
+      };
+
+      plotsInput.oninput = (e) => {
+        if (parseFloat(e.target.value) < 0) e.target.value = 1;
+        plots = Math.max(1, parseInt(e.target.value) || 1);
+        extraTiles = 0;
+        render();
+      };
+
+      wateredTilesInput.oninput = (e) => {
+        if (parseFloat(e.target.value) < 0) e.target.value = 0;
+        const totalTiles = plots * F.TILES_PER_PLOT + extraTiles;
+        customWateredTiles = Math.min(Math.max(0, parseInt(e.target.value) || 0), totalTiles);
+        waterMode = customWateredTiles === 0 ? 'none' : 'custom';
+        useFocus = customWateredTiles > 0;
+        waterModeSelect.value = waterMode;
+        render();
+      };
+
+      seedPriceInput.oninput = (e) => {
+        if (parseFloat(e.target.value) < 0) e.target.value = 0;
+        setItemPrice(selectedItem.seedId, e.target.value);
+        render();
+        renderPriceMatrix();
+      };
+
+      feedPriceInput.oninput = (e) => {
+        if (parseFloat(e.target.value) < 0) e.target.value = 0;
+        const feedId = getActiveFeedItemId();
+        if (feedId) {
+          setItemPrice(feedId, e.target.value);
+          render();
+          renderPriceMatrix();
+        }
+      };
+
+      outputPriceInput.oninput = (e) => {
+        if (parseFloat(e.target.value) < 0) e.target.value = 0;
+        const outputId = getActiveOutputItemId();
+        if (outputId) {
+          setItemPrice(outputId, e.target.value);
+          render();
+          renderPriceMatrix();
+        }
+      };
+
+      window.setPlots = (p) => {
+        plots = Math.max(1, p);
+        extraTiles = 0;
+        plotsInput.value = plots;
+        render();
+      };
+
+      window.fitFocusPool = (fp) => {
+        const isProduceAnimal = selectedItem.category === 'animals' && animalMode === 'produce' && selectedItem.productId;
+        if (isProduceAnimal) return;
+
+        const m = masteries[selectedCategory] || 0;
+        const sp = itemSpecs[selectedItem.id] || 0;
+        const maxWatered = F.fitTilesToFocus({ focusBudget: fp, mastery: m, spec: sp });
+        if (maxWatered <= 0) return;
+
+        useFocus = true;
+        if (waterMode === 'none') {
+          waterMode = 'all';
+        }
+        if (waterMode === 'self_sustain') {
+          // 50% watered -> total tiles = maxWatered * 2
+          const total = maxWatered * 2;
+          plots = Math.floor(total / F.TILES_PER_PLOT);
+          extraTiles = total % F.TILES_PER_PLOT;
+        } else {
+          plots = Math.floor(maxWatered / F.TILES_PER_PLOT);
+          extraTiles = maxWatered % F.TILES_PER_PLOT;
+          customWateredTiles = maxWatered;
+        }
+        if (plots === 0 && extraTiles === 0) plots = 1;
+        syncControlsUI();
+        render();
+      };
+
+      togglePriceMatrixBtn.onclick = () => {
+        const isOpen = mainLayout.classList.toggle('has-sidebar');
+        priceMatrixSidebar.style.display = isOpen ? 'block' : 'none';
+        togglePriceMatrixBtn.className = 'btn-toggle' + (isOpen ? ' active' : '');
+        saveSession();
+      };
+
+      // Specs Modal
+      function updateModalFocusPreview() {
+        const mEl = document.getElementById('modalMasteryRange');
+        const spEl = document.getElementById(`modalSpec_${selectedItem.id}`);
+        const m = mEl ? parseInt(mEl.value) : masteries[selectedCategory];
+        const s = spEl ? parseInt(spEl.value) : (itemSpecs[selectedItem.id] || 0);
+        const cost = F.calculateFarmingFocusCost({ mastery: m, spec: s });
+        document.getElementById('modalFocusPreview').innerText = `${cost} FP / tile (${selectedItem.name})`;
+      }
+
+      window.openSpecsModal = () => {
+        const cat = F.CATEGORIES.find(c => c.id === selectedCategory);
+        const catItems = F.ITEMS.filter(i => i.category === selectedCategory);
+        const container = document.getElementById('modalSpecsContainer');
+        container.innerHTML = '';
+
+        // Category Mastery Card
+        const mCard = document.createElement('div');
+        mCard.className = 'spec-card';
+        mCard.style.borderColor = 'var(--border)';
+        mCard.innerHTML = `
+          <div class="spec-header">
+            <span style="color: var(--gold);">${cat.masteryName} Mastery (100 FCE / lvl)</span>
+            <span id="modalMasteryVal" style="font-family: monospace; color: var(--gold);">${masteries[selectedCategory]}</span>
+          </div>
+          <input type="range" id="modalMasteryRange" min="0" max="100" value="${masteries[selectedCategory]}" style="width: 100%;">
+        `;
+        container.appendChild(mCard);
+
+        mCard.querySelector('#modalMasteryRange').oninput = (e) => {
+          document.getElementById('modalMasteryVal').innerText = e.target.value;
+          updateModalFocusPreview();
+        };
+
+        // Per-Item Specs
+        catItems.forEach(item => {
+          const val = itemSpecs[item.id] ?? 100;
+          const card = document.createElement('div');
+          card.className = 'spec-card';
+          card.innerHTML = `
+            <div class="spec-header">
+              <span class="tier-color-${item.tier}">T${item.tier} ${item.name} Spec (200 FCE / lvl)</span>
+              <span id="modalSpecVal_${item.id}" style="font-family: monospace;">${val}</span>
+            </div>
+            <input type="range" id="modalSpec_${item.id}" min="0" max="100" value="${val}" style="width: 100%;">
+          `;
+          card.querySelector(`#modalSpec_${item.id}`).oninput = (e) => {
+            document.getElementById(`modalSpecVal_${item.id}`).innerText = e.target.value;
+            updateModalFocusPreview();
+          };
+          container.appendChild(card);
+        });
+
+        updateModalFocusPreview();
+        specsModal.classList.add('open');
+      };
+
+      window.closeSpecsModal = () => {
+        const mEl = document.getElementById('modalMasteryRange');
+        if (mEl) masteries[selectedCategory] = parseInt(mEl.value);
+        F.ITEMS.filter(i => i.category === selectedCategory).forEach(item => {
+          const el = document.getElementById(`modalSpec_${item.id}`);
+          if (el) itemSpecs[item.id] = parseInt(el.value);
+        });
+        try {
+          localStorage.setItem(SPECS_STORAGE_KEY, JSON.stringify({ masteries, itemSpecs }));
+        } catch (e) {}
+        specsModal.classList.remove('open');
+        render();
+      };
+
+      openSpecsBtn.onclick = window.openSpecsModal;
+
+      // Bulk Fetch ALL Item Prices in Active Category (Europe AODP)
+      fetchAllPricesBtn.onclick = async () => {
+        fetchAllPricesBtn.disabled = true;
+        fetchAllPricesBtn.innerText = '⏳ Querying...';
+
+        const catItems = F.ITEMS.filter(i => i.category === selectedCategory);
+        const idSet = new Set();
+        catItems.forEach(item => {
+          if (item.seedId) idSet.add(item.seedId);
+          if (item.productId) idSet.add(item.productId);
+          if (item.grownId) idSet.add(item.grownId);
+          if (item.favoriteFoodId) idSet.add(item.favoriteFoodId);
+        });
+        if (selectedCategory === 'animals') idSet.add('T1_CARROT');
+
+        try {
+          const res = await API.fetchPrices({
+            server: SERVER,
+            itemIds: Array.from(idSet),
+            locations: selectedCity.id !== 'None' ? selectedCity.name : '',
+            forceRefresh: true,
+          });
+
+          let updated = 0;
+          if (res.data && res.data.length > 0) {
+            res.data.forEach(item => {
+              const age = API.formatPriceAge(item.sell_price_min_date);
+              const p = item.sell_price_min > 0 ? item.sell_price_min : item.buy_price_max;
+              if (p > 0) {
+                setItemPrice(item.item_id, p, age);
+                updated++;
+              }
+            });
+          }
+          syncCurrentItemPrices();
+          render();
+          renderPriceMatrix();
+          fetchAllPricesBtn.innerText = `✓ ${updated} OK`;
+          setTimeout(() => { fetchAllPricesBtn.innerText = 'Fetch Prices'; fetchAllPricesBtn.disabled = false; }, 2500);
+        } catch (e) {
+          console.warn('API Error:', e);
+          fetchAllPricesBtn.innerText = '⚠ Error';
+          setTimeout(() => { fetchAllPricesBtn.innerText = 'Fetch Prices'; fetchAllPricesBtn.disabled = false; }, 2500);
+        }
+      };
+
+      // Item Prices Side Window
+      function renderPriceMatrix() {
+        const catObj = F.CATEGORIES.find(c => c.id === selectedCategory);
+        document.getElementById('sideResourceName').innerText = `All ${catObj.name} (${selectedCity.name} · EU)`;
+
+        const isAnimal = selectedCategory === 'animals';
+        const showProduceCol = isAnimal && animalMode === 'produce';
+        document.getElementById('matrixCol1Header').innerText = isAnimal ? 'Baby Buy' : 'Seed Buy';
+        document.getElementById('matrixCol2Header').innerText = isAnimal ? (showProduceCol ? 'Eggs/Milk Sell' : 'Grown Sell') : 'Harvest Sell';
+
+        priceMatrixBody.innerHTML = '';
+        const catItems = F.ITEMS.filter(i => i.category === selectedCategory);
+
+        catItems.forEach(item => {
+          const buyId = item.seedId;
+          const sellId = isAnimal
+            ? ((showProduceCol && item.productId) ? item.productId : item.grownId)
+            : item.productId;
+
+          const buyData = priceStore.get(buyId) || { price: 0, age: { text: '-', category: 'stale' } };
+          const sellData = priceStore.get(sellId) || { price: 0, age: { text: '-', category: 'stale' } };
+          const isSelected = item.id === selectedItem.id;
+
+          const tr = document.createElement('tr');
+          if (isSelected) tr.style.background = 'var(--accent-active-bg)';
+
+          tr.innerHTML = `
+            <td class="matrix-tier-cell" title="Click to select ${item.name}">
+              <span class="tier-color-${item.tier}">T${item.tier}</span>
+              <div style="font-size: 10px; color: var(--text-muted); font-weight: 600;">${item.name}</div>
+            </td>
+            <td>
+              <div class="matrix-cell">
+                <img class="matrix-icon" src="${F.getRenderUrl(buyId, 1, 48)}" alt="${item.seedName}">
+                <div class="matrix-input-col">
+                  <input type="number" min="0" class="price-matrix-input" value="${buyData.price}">
+                  <button type="button" class="price-age age-${buyData.age.category}" title="Click to refresh price from Europe AODP">${buyData.age.text}</button>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="matrix-cell">
+                <img class="matrix-icon" src="${F.getRenderUrl(sellId, 1, 48)}" alt="${item.name}">
+                <div class="matrix-input-col">
+                  <input type="number" min="0" class="price-matrix-input" value="${sellData.price}" style="color: var(--success);">
+                  <button type="button" class="price-age age-${sellData.age.category}" title="Click to refresh price from Europe AODP">${sellData.age.text}</button>
+                </div>
+              </div>
+            </td>
+          `;
+
+          const inputs = tr.querySelectorAll('input');
+          bindNonNegativeInput(inputs[0], 0);
+          bindNonNegativeInput(inputs[1], 0);
+          inputs[0].onchange = (e) => {
+            if (parseFloat(e.target.value) < 0) e.target.value = 0;
+            setItemPrice(buyId, e.target.value);
+            syncCurrentItemPrices();
+            render();
+          };
+          inputs[1].onchange = (e) => {
+            if (parseFloat(e.target.value) < 0) e.target.value = 0;
+            setItemPrice(sellId, e.target.value);
+            syncCurrentItemPrices();
+            render();
+          };
+
+          const ageBtns = tr.querySelectorAll('button.price-age');
+          ageBtns[0].onclick = () => refreshSingleItemPrice(buyId, ageBtns[0]);
+          ageBtns[1].onclick = () => refreshSingleItemPrice(sellId, ageBtns[1]);
+
+          tr.querySelector('.matrix-tier-cell').onclick = () => {
+            selectedItem = item;
+            const bCity = F.ISLAND_CITIES.find(c => c.id === item.bonusCity);
+            if (bCity) selectedCity = bCity;
+            syncControlsUI();
+            syncCurrentItemPrices();
+            render();
+            renderPriceMatrix();
+          };
+
+          priceMatrixBody.appendChild(tr);
+        });
+      }
+
+      function render() {
+        initButtons();
+        syncControlsUI();
+
+        const isAnimal = selectedItem.category === 'animals';
+        const effectiveAnimMode = (isAnimal && animalMode === 'produce' && selectedItem.productId) ? 'produce' : 'grown';
+        const canFocus = !(isAnimal && effectiveAnimMode === 'produce');
+
+        // Focus button lock
+        const focusDisabled = !canFocus || waterMode === 'none';
+        focusToggle.disabled = focusDisabled;
+        waterModeSelect.disabled = !canFocus;
+        const effectiveUseFocus = useFocus && !focusDisabled;
+        focusToggle.className = 'btn-toggle' + (effectiveUseFocus ? ' active' : '');
+        focusToggle.innerHTML = `⚡ Focus: <span style="color: ${effectiveUseFocus ? 'var(--cyan)' : 'var(--text-muted)'};">${effectiveUseFocus ? 'ON' : 'OFF'}</span>`;
+
+        const totalTiles = Math.max(1, plots * F.TILES_PER_PLOT + extraTiles);
+        let activeWatered = 0;
+        if (effectiveUseFocus) {
+          if (waterMode === 'all') activeWatered = totalTiles;
+          else if (waterMode === 'self_sustain') activeWatered = Math.ceil(totalTiles / 2);
+          else if (waterMode === 'custom') activeWatered = Math.min(customWateredTiles, totalTiles);
+        }
+
+        wateredTilesInput.disabled = !canFocus;
+        if (document.activeElement !== wateredTilesInput) {
+          wateredTilesInput.value = activeWatered;
+        }
+        document.getElementById('totalTilesBadge').innerText = `${totalTiles} tiles`;
+        document.getElementById('waterPctBadge').innerText = `${Math.round((activeWatered / totalTiles) * 100)}%`;
+
+        // Specs summary
+        const m = masteries[selectedCategory] || 0;
+        const sp = itemSpecs[selectedItem.id] || 0;
+        document.getElementById('specSummaryBadge').innerText = `${m}/${sp}`;
+        document.getElementById('quickMasteryVal').innerText = m;
+        document.getElementById('quickSpecItemLabel').innerText = selectedItem.name;
+        document.getElementById('quickSpecVal').innerText = sp;
+
+        const marketFeeRate = directTrade ? 0.0 : F.getMarketFeeRate({ hasPremium, orderType, directTrade });
+        const buyFeeRate = F.getBuyFeeRate({ buyOrderType });
+
+        const curSeedPrice = Number(seedPriceInput.value) || 0;
+        const curOutputPrice = Number(outputPriceInput.value) || 0;
+        const curFeedPrice = Number(feedPriceInput.value) || 0;
+
+        const sim = F.simulateFarming({
+          itemId: selectedItem.id,
+          plots,
+          extraTiles,
+          cityId: selectedCity.id,
+          hasPremium,
+          wateredTiles: activeWatered,
+          mastery: m,
+          spec: sp,
+          seedPrice: curSeedPrice,
+          productPrice: effectiveAnimMode === 'produce' || !isAnimal ? curOutputPrice : 0,
+          grownPrice: isAnimal && effectiveAnimMode === 'grown' ? curOutputPrice : 0,
+          feedPrice: curFeedPrice,
+          useNpcCap,
+          animalMode: effectiveAnimMode,
+          useFavoriteFood,
+          marketFeeRate,
+          buyFeeRate,
+        });
+
+        // Header & Card 1 Callout
+        document.getElementById('bonusCityLabel').innerText = selectedItem.bonusCity
+          ? `+10% Bonus: ${selectedItem.bonusCity}`
+          : 'No Royal City Bonus';
+
+        const yieldBadge = document.getElementById('yieldBadge');
+        if (isAnimal && effectiveAnimMode === 'grown') {
+          yieldBadge.innerText = '1 Grown / tile';
+        } else {
+          yieldBadge.innerText = `${sim.yieldPerTile.toFixed(2).replace(/\.00$/, '')} / tile`;
+        }
+
+        document.getElementById('focusCostVal').innerText = `${sim.focusCostPerTile} FP`;
+        appliedFeeText.innerText = `Sell ${(marketFeeRate * 100).toFixed(1)}% · Buy ${(buyFeeRate * 100).toFixed(1)}%`;
+
+        const outputId = getActiveOutputItemId();
+        document.getElementById('seedIcon').src = F.getRenderUrl(selectedItem.seedId, 1, 64);
+        document.getElementById('outputIcon').src = F.getRenderUrl(outputId, 1, 64);
+
+        const outLabel = isAnimal
+          ? (effectiveAnimMode === 'produce' ? selectedItem.productName : selectedItem.grownName)
+          : selectedItem.productName;
+
+        document.getElementById('recipeText').innerHTML = isAnimal && effectiveAnimMode === 'grown'
+          ? `1x <span class="tier-color-${selectedItem.tier}">T${selectedItem.tier} ${selectedItem.seedName}</span> + ${sim.feedUnitsPerTile} Feed ➔ 1x <span class="tier-color-${selectedItem.tier}">${outLabel}</span>`
+          : `1 Tile ➔ ${sim.yieldPerTile.toFixed(2).replace(/\.00$/, '')}x <span class="tier-color-${selectedItem.tier}">T${selectedItem.tier} ${outLabel}</span>`;
+
+        document.getElementById('returnRateSub').innerText = isAnimal && effectiveAnimMode === 'produce'
+          ? `Daily Harvest (${sim.growthHours}h) · Consumes ${sim.feedUnitsPerTile} crops/animal`
+          : `Seed/Baby Return: ${(selectedItem.baseReturn * 100).toFixed(1)}% base · ${(selectedItem.wateredReturn * 100).toFixed(1)}% watered`;
+
+        // Card 3 labels & visibility
+        seedPriceBox.style.display = (isAnimal && effectiveAnimMode === 'produce') ? 'none' : 'block';
+        document.getElementById('seedPriceLabel').innerText = `${selectedItem.seedName} Buy`;
+        document.getElementById('npcPriceHint').innerHTML = sim.boughtFromNpc
+          ? `<span style="color: var(--success);">Using NPC Vendor: ${selectedItem.npcSeedPrice.toLocaleString()} s (0% fee)</span>`
+          : `NPC Vendor: ${selectedItem.npcSeedPrice.toLocaleString()} s`;
+
+        feedPriceBox.style.display = isAnimal ? 'block' : 'none';
+        if (isAnimal) {
+          const feedName = useFavoriteFood ? selectedItem.favoriteFoodName : 'Carrots (Generic)';
+          document.getElementById('feedPriceLabel').innerText = `Feed: ${feedName}`;
+          document.getElementById('feedAmountHint').innerText = `${sim.feedUnitsPerTile} crops / animal (${sim.totalFeedUnits.toLocaleString()} total)`;
+        }
+
+        document.getElementById('outputPriceLabel').innerText = `${outLabel} Sell`;
+        document.getElementById('cycleTimeHint').innerText = `Growth Cycle: ${sim.growthHours}h`;
+
+        const plotText = extraTiles > 0 ? `${plots} plots + ${extraTiles} tiles` : `${plots} ${plots === 1 ? 'plot' : 'plots'}`;
+        document.getElementById('activeFarmPreview').innerText =
+          `${plotText} (${sim.totalTiles} tiles · ${sim.wateredTiles} watered · ${sim.totalFocusSpent.toLocaleString()} FP)`;
+
+        // KPIs
+        document.getElementById('netProfitLabel').innerText = `Net Profit / ${sim.growthHours}h Cycle`;
+        const isProf = sim.netProfit > 0;
+        const netProfitVal = document.getElementById('netProfitVal');
+        netProfitVal.innerText = `${isProf ? '+' : ''}${Math.round(sim.netProfit).toLocaleString()} Silver`;
+        netProfitVal.className = 'kpi-val ' + (isProf ? 'text-pos' : 'text-neg');
+        document.getElementById('profitSub').innerText =
+          `${Math.round(sim.profitPerPlot).toLocaleString()} / plot · ${Math.round(sim.profitPerTile).toLocaleString()} / tile`;
+
+        const sfVal = document.getElementById('silverFocusVal');
+        if (sim.totalFocusSpent > 0 && sim.marginalSilverPerFocus !== null) {
+          sfVal.innerText = `${sim.marginalSilverPerFocus.toFixed(1)} S/FP`;
+          document.getElementById('focusRatingSub').innerText =
+            `Total: ${sim.silverPerFocus.toFixed(1)} S/FP · Spent ${sim.totalFocusSpent.toLocaleString()} FP`;
+        } else {
+          sfVal.innerText = 'Off';
+          document.getElementById('focusRatingSub').innerText = 'No Focus Used';
+        }
+
+        document.getElementById('outputVal').innerText = `${Math.round(sim.totalHarvest).toLocaleString()} ${outLabel}`;
+        if (isAnimal && effectiveAnimMode === 'produce') {
+          document.getElementById('outputSub').innerText = `Feed: ${sim.totalFeedUnits.toLocaleString()} crops`;
+        } else if (sim.seedSurplus > 0.01) {
+          document.getElementById('outputSub').innerText = `Surplus: +${sim.seedSurplus.toFixed(1)} ${selectedItem.seedName} to sell`;
+        } else if (sim.seedDeficit > 0.01) {
+          document.getElementById('outputSub').innerText = `Buy: ${sim.seedDeficit.toFixed(1)} replacement ${selectedItem.seedName}`;
+        } else {
+          document.getElementById('outputSub').innerText = '100% Seed Self-Sustaining (0 net)';
+        }
+
+        document.getElementById('breakEvenVal').innerText = `${sim.breakEvenPrice.toLocaleString()} Silver`;
+
+        // Breakdown Table
+        if (sim.seedDeficit > 0.001) {
+          document.getElementById('rowSeedCostWrapper').style.display = 'table-row';
+          document.getElementById('rowSeedCostLabel').innerText =
+            `Replacement ${selectedItem.seedName} (${sim.seedDeficit.toFixed(1)} × ${sim.effectiveSeedBuyPrice.toLocaleString()} s${sim.boughtFromNpc ? ' · NPC' : ''})`;
+          document.getElementById('rowSeedCost').innerText = `-${Math.round(sim.seedBuyCost).toLocaleString()}`;
+        } else {
+          document.getElementById('rowSeedCostWrapper').style.display = 'none';
+        }
+
+        if (sim.totalFeedUnits > 0) {
+          document.getElementById('rowFeedCostWrapper').style.display = 'table-row';
+          document.getElementById('rowFeedCostLabel').innerText =
+            `Animal Feed (${sim.totalFeedUnits.toLocaleString()} × ${curFeedPrice.toLocaleString()} s)`;
+          document.getElementById('rowFeedCost').innerText = `-${Math.round(sim.feedCost).toLocaleString()}`;
+        } else {
+          document.getElementById('rowFeedCostWrapper').style.display = 'none';
+        }
+
+        if (sim.totalBuyFees > 0) {
+          document.getElementById('rowBuyFeeWrapper').style.display = 'table-row';
+          document.getElementById('rowBuyFee').innerText = `-${Math.round(sim.totalBuyFees).toLocaleString()}`;
+        } else {
+          document.getElementById('rowBuyFeeWrapper').style.display = 'none';
+        }
+
+        document.getElementById('rowTotalExpense').innerText = `-${Math.round(sim.totalExpense).toLocaleString()}`;
+        document.getElementById('rowHarvestRevLabel').innerText = `Gross ${outLabel} Sales (${Math.round(sim.totalHarvest).toLocaleString()} units)`;
+        document.getElementById('rowGrossRevenue').innerText = `+${Math.round(sim.harvestGrossRevenue).toLocaleString()}`;
+
+        if (sim.seedSurplus > 0.001) {
+          document.getElementById('rowSurplusSeedWrapper').style.display = 'table-row';
+          document.getElementById('rowSurplusSeedLabel').innerText = `Surplus ${selectedItem.seedName} Sales (${sim.seedSurplus.toFixed(1)} units)`;
+          document.getElementById('rowSurplusSeed').innerText = `+${Math.round(sim.seedSurplusGross).toLocaleString()}`;
+        } else {
+          document.getElementById('rowSurplusSeedWrapper').style.display = 'none';
+        }
+
+        document.getElementById('rowMarketTax').innerText = `-${Math.round(sim.totalMarketTax).toLocaleString()}`;
+
+        const rowNet = document.getElementById('rowNetProfit');
+        rowNet.innerText = `${isProf ? '+' : ''}${Math.round(sim.netProfit).toLocaleString()} Silver`;
+        rowNet.className = isProf ? 'text-pos' : 'text-neg';
+
+        // Discord Export
+        document.getElementById('copyDiscordBtn').onclick = () => {
+          const table =
+`\`\`\`asciidoc
+=== ALBION FARMING PROFIT REPORT ===
+Item:        T${selectedItem.tier} ${outLabel} (${selectedItem.category})
+Island:      ${selectedCity.name} (${sim.hasBiomeBonus ? '+10% Biome Bonus' : 'No Bonus'})
+Scale:       ${sim.totalTiles} tiles (${sim.wateredTiles} watered / ${sim.totalFocusSpent.toLocaleString()} FP)
+Output:      ${Math.round(sim.totalHarvest).toLocaleString()} ${outLabel} @ ${sim.unitSellPrice.toLocaleString()} s
+-----------------------------------------
+Expenses:    -${Math.round(sim.totalExpense).toLocaleString()} silver
+Net Revenue: +${Math.round(sim.netRevenue).toLocaleString()} silver
+NET PROFIT:  ${isProf ? '+' : ''}${Math.round(sim.netProfit).toLocaleString()} silver (${Math.round(sim.profitPerPlot).toLocaleString()}/plot)
+Break-even:  ${sim.breakEvenPrice.toLocaleString()} silver
+${sim.totalFocusSpent > 0 ? `Water S/FP:  ${sim.marginalSilverPerFocus.toFixed(1)} S/FP marginal (${sim.silverPerFocus.toFixed(1)} total)` : 'Focus:       Not used'}
+\`\`\``;
+          navigator.clipboard.writeText(table);
+          const b = document.getElementById('copyDiscordBtn');
+          b.innerText = '✓ Copied!';
+          setTimeout(() => { b.innerText = 'Copy for Discord'; }, 2000);
+        };
+
+        // CSV Export
+        document.getElementById('exportCsvBtn').onclick = () => {
+          const csv = [
+            ['Metric', 'Value'],
+            ['Item', `T${selectedItem.tier} ${outLabel}`],
+            ['Island', selectedCity.name],
+            ['Tiles', sim.totalTiles],
+            ['Watered Tiles', sim.wateredTiles],
+            ['Harvest Output', sim.totalHarvest.toFixed(2)],
+            ['Total Expense', Math.round(sim.totalExpense)],
+            ['Net Revenue', Math.round(sim.netRevenue)],
+            ['Net Profit', Math.round(sim.netProfit)],
+            ['Profit / Plot', Math.round(sim.profitPerPlot)],
+            ['Break-even Price', sim.breakEvenPrice],
+            ['Marginal Silver / Focus', sim.marginalSilverPerFocus ? sim.marginalSilverPerFocus.toFixed(2) : 0],
+          ].map(row => row.join(',')).join('\n');
+
+          const blob = new Blob([csv], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `albion_farming_${selectedItem.id}.csv`;
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+
+        saveSession();
+      }
+
+      // Initialize & Restore Session
+      loadSession();
+      syncControlsUI();
+      syncCurrentItemPrices();
+      render();
+      renderPriceMatrix();
+
+      window.addEventListener('beforeunload', saveSession);
+      window.addEventListener('pagehide', saveSession);
+    })();
+  </script>
+</body>
+</html>

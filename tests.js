@@ -5,6 +5,7 @@
  */
 
 import './albion_rules.js';
+import './albion_farming_rules.js';
 
 const {
   RESOURCES,
@@ -537,6 +538,135 @@ assert(
   'fitBatchToFocus handles recursive mode even when only lower tiers (T7) use Focus',
   `Batch=${fitT7OnlyBatch}, Spent=${simT7Only.totalFocusSpent} FP`
 );
+
+// 11. Island Farming Rules & Profit Engine Tests
+console.log('\n[11] Island Farming Rules & Profit Engine:');
+const F = globalThis.AlbionFarmingRules;
+
+assert(F.ITEMS.length === 21, 'All 21 farming items registered (8 Crops, 7 Herbs, 6 Animals)');
+assert(
+  F.ITEMS.every(i => Math.abs(i.npcSeedPrice * (1 - i.baseReturn) - 2000) < 0.01),
+  'Exact Albion economic invariant: NPC Seed Price * (1 - BaseReturn) === 2,000 silver across all tiers'
+);
+assert(
+  F.ITEMS.every(i => Math.abs((i.wateredReturn - 1) - (1 - i.baseReturn)) < 0.0001),
+  'Watering symmetry: Watered surplus (wateredReturn - 1) === Unwatered deficit (1 - baseReturn)'
+);
+
+assert(F.calculateFarmingFocusCost({ mastery: 0, spec: 0 }) === 1000, 'Farming focus cost at 0/0 spec is 1,000 FP');
+assert(F.calculateFarmingFocusCost({ mastery: 100, spec: 0 }) === 500, 'Farming focus cost at 100 Mastery / 0 Spec is 500 FP');
+assert(F.calculateFarmingFocusCost({ mastery: 0, spec: 100 }) === 250, 'Farming focus cost at 0 Mastery / 100 Spec is 250 FP');
+assert(F.calculateFarmingFocusCost({ mastery: 100, spec: 100 }) === 125, 'Farming focus cost at 100/100 max spec is 125 FP');
+
+const carrotItem = F.ITEMS.find(i => i.id === 'carrot');
+assert(Math.abs(F.calculateYieldPerTile({ item: carrotItem, cityId: 'Martlock', hasPremium: false }) - 4.5) < 0.001, 'Non-Premium non-bonus yield is 4.5 / tile');
+assert(Math.abs(F.calculateYieldPerTile({ item: carrotItem, cityId: 'Martlock', hasPremium: true }) - 9.0) < 0.001, 'Premium non-bonus yield is 9.0 / tile');
+assert(Math.abs(F.calculateYieldPerTile({ item: carrotItem, cityId: 'Lymhurst', hasPremium: true }) - 9.9) < 0.001, 'Premium + matching biome (+10% Lymhurst for Carrots) yield is 9.9 / tile');
+
+const selfSustainCarrots = F.simulateFarming({
+  itemId: 'carrot',
+  plots: 10, // 90 tiles
+  cityId: 'Lymhurst',
+  hasPremium: true,
+  waterMode: 'self_sustain', // 45 watered, 45 unwatered
+  mastery: 100,
+  spec: 100,
+  seedPrice: 2000,
+  productPrice: 400,
+  marketFeeRate: 0.065,
+  buyFeeRate: 0.025,
+});
+assert(
+  selfSustainCarrots.wateredTiles === 45 &&
+  Math.abs(selfSustainCarrots.seedDeficit) < 0.001 &&
+  Math.abs(selfSustainCarrots.seedSurplus) < 0.001,
+  'Self-Sustain watering (50% tiles) produces exact 0 seed deficit and 0 seed surplus'
+);
+
+const npcCapSim = F.simulateFarming({
+  itemId: 'carrot',
+  plots: 5,
+  waterMode: 'none',
+  seedPrice: 2500, // more expensive than 2,000 NPC vendor
+  productPrice: 400,
+  useNpcCap: true,
+  buyFeeRate: 0.025,
+});
+assert(
+  npcCapSim.boughtFromNpc === true && npcCapSim.effectiveSeedBuyPrice === 2000 && npcCapSim.seedBuyFee === 0,
+  'NPC Seed Cap automatically switches to NPC merchant (2,000s, 0% fee) when market seed price is higher'
+);
+
+const goatGrownSim = F.simulateFarming({
+  itemId: 'goat',
+  plots: 5, // 45 goats
+  cityId: 'Bridgewatch',
+  hasPremium: true,
+  waterMode: 'all',
+  animalMode: 'grown',
+  useFavoriteFood: true,
+  seedPrice: 7400,
+  grownPrice: 7200,
+  feedPrice: 400,
+  marketFeeRate: 0.065,
+  buyFeeRate: 0.025,
+});
+assert(
+  goatGrownSim.totalFeedUnits === 45 * 9 && goatGrownSim.totalHarvest === 45 && goatGrownSim.seedSurplus > 0,
+  'Pasture Animals (Raise & Sell Grown) consume 9 favorite crops/animal, output grown animals, and yield surplus offspring when nurtured'
+);
+
+const goatMilkSim = F.simulateFarming({
+  itemId: 'goat',
+  plots: 5, // 45 goats
+  cityId: 'Bridgewatch',
+  hasPremium: true,
+  animalMode: 'produce',
+  useFavoriteFood: false, // 18 generic crops
+  productPrice: 600,
+  feedPrice: 350,
+  marketFeeRate: 0.0, // Direct Trade 0%
+  buyFeeRate: 0.0,
+});
+assert(
+  goatMilkSim.totalFeedUnits === 45 * 18 &&
+  goatMilkSim.totalFocusSpent === 0 &&
+  Math.abs(goatMilkSim.totalHarvest - 45 * 9.9) < 0.01 &&
+  goatMilkSim.totalMarketTax === 0,
+  'Pasture Animals (Daily Milk/Eggs) consume 18 non-favorite crops, use 0 focus, apply biome +10% yield, and respect Direct Trade 0% tax'
+);
+
+const beFarm = F.simulateFarming({
+  itemId: 'pumpkin',
+  plots: 5,
+  cityId: 'Lymhurst',
+  hasPremium: true,
+  waterMode: 'none',
+  seedPrice: 29500,
+  productPrice: 460,
+  marketFeeRate: 0.065,
+  buyFeeRate: 0.025,
+});
+const beFarmCheck = F.simulateFarming({
+  itemId: 'pumpkin',
+  plots: 5,
+  cityId: 'Lymhurst',
+  hasPremium: true,
+  waterMode: 'none',
+  seedPrice: 29500,
+  productPrice: beFarm.breakEvenPrice,
+  marketFeeRate: 0.065,
+  buyFeeRate: 0.025,
+});
+assert(
+  beFarmCheck.netProfit >= 0 && beFarmCheck.netProfit < beFarmCheck.totalHarvest,
+  'Farming break-even sell price yields ~0 profit (within 1 silver rounding per unit)',
+  `Net Profit: ${beFarmCheck.netProfit.toFixed(2)}`
+);
+
+assert(F.fitTilesToFocus({ focusBudget: 10000, mastery: 100, spec: 100 }) === 80, '10k Focus at max spec waters exactly 80 tiles (80 * 125 = 10,000 FP)');
+assert(F.fitTilesToFocus({ focusBudget: 20000, mastery: 100, spec: 100 }) === 160, '20k Focus at max spec waters exactly 160 tiles');
+assert(F.fitTilesToFocus({ focusBudget: 30000, mastery: 100, spec: 100 }) === 240, '30k Focus at max spec waters exactly 240 tiles');
 
 console.log('\n=====================================================');
 console.log(`TEST RESULTS: ${passedCount} PASSED, ${failedCount} FAILED`);
