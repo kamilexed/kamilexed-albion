@@ -37,7 +37,22 @@
       --t8-color: #ffffff;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) var(--surface-well);
+    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--surface-well); border-radius: 6px; }
+    ::-webkit-scrollbar-thumb {
+      background: #6b3b0e;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border); }
+    ::-webkit-scrollbar-corner { background: var(--bg); }
 
     body {
       background: var(--bg);
@@ -903,12 +918,12 @@
             </div>
 
             <button id="heartToggle" class="btn-toggle" type="button" title="Substitutes 1 raw resource per craft with 1 Faction Heart (affected by RRR, disabled on .4)">
-              🫀 <span id="heartBtnName">Mountainheart</span>: <span id="heartToggleStatus" style="color: var(--text-muted);">OFF</span>
+              ❤️ <span id="heartBtnName">Mountainheart</span>: <span id="heartToggleStatus" style="color: var(--text-muted);">OFF</span>
             </button>
 
             <div id="heartPickerWrap" class="tier-picker-wrap">
               <button id="heartTiersBtn" class="pill-select" type="button" title="Select individual tiers to use Faction Hearts on">
-                🫀 Tiers: <span id="heartTiersSummary"></span> ▾
+                ❤️ Tiers: <span id="heartTiersSummary"></span> ▾
               </button>
               <div id="heartTiersMenu" class="tier-picker-menu">
                 <div class="tier-picker-header">Use Faction Heart on Tiers</div>
@@ -1280,6 +1295,8 @@
         <button type="button" onclick="closeSpecsModal()" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer;">✕</button>
       </div>
 
+      <div id="modalResourceTabs" class="btn-group" style="margin-bottom: 12px;"></div>
+
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
         <div class="spec-card">
           <div class="spec-header">
@@ -1361,16 +1378,43 @@
       let stationTaxPer100 = 500;
       let batchSize = 500;
 
-      // Destiny Board Specs (T4-T8 only, max 500/500)
-      let specs = { 4: 100, 5: 100, 6: 100, 7: 100, 8: 100 };
+      // Separate Destiny Board Specs per Resource Type (T4-T8 each, max 500/500 per resource)
+      const makeDefaultSpecs = () => ({ 4: 100, 5: 100, 6: 100, 7: 100, 8: 100 });
+      let specsByResource = {
+        ore: makeDefaultSpecs(),
+        wood: makeDefaultSpecs(),
+        fiber: makeDefaultSpecs(),
+        hide: makeDefaultSpecs(),
+        stone: makeDefaultSpecs(),
+      };
 
       try {
-        const savedSpecs = localStorage.getItem('ALBION_REFINING_SPECS_V2');
-        if (savedSpecs) {
-          const parsed = JSON.parse(savedSpecs);
-          if (parsed.specs) specs = { ...specs, ...parsed.specs };
+        const savedV3 = localStorage.getItem('ALBION_REFINING_SPECS_V3');
+        if (savedV3) {
+          const parsed = JSON.parse(savedV3);
+          if (parsed.specsByResource) {
+            R.RESOURCES.forEach(r => {
+              if (parsed.specsByResource[r.id]) {
+                specsByResource[r.id] = { ...makeDefaultSpecs(), ...parsed.specsByResource[r.id] };
+              }
+            });
+          }
+        } else {
+          const savedV2 = localStorage.getItem('ALBION_REFINING_SPECS_V2');
+          if (savedV2) {
+            const parsed = JSON.parse(savedV2);
+            if (parsed.specs) {
+              R.RESOURCES.forEach(r => {
+                specsByResource[r.id] = { ...makeDefaultSpecs(), ...parsed.specs };
+              });
+            }
+          }
         }
       } catch (e) {}
+
+      function getActiveSpecs() {
+        return specsByResource[selectedResource.id] || makeDefaultSpecs();
+      }
 
       // Baseline offline price curves across tiers & enchantments
       const BASE_RAW_CURVE = {
@@ -2049,7 +2093,7 @@
           compound,
           isRecursive,
           focusTiers,
-          specs,
+          specs: getActiveSpecs(),
           useHeart,
           heartTiers,
         });
@@ -2064,22 +2108,59 @@
         saveSession();
       };
 
-      // Destiny Board Specs Modal
-      window.openSpecsModal = () => {
+      // Destiny Board Specs Modal (Separate Specs per Resource)
+      let modalSpecResourceId = selectedResource.id;
+
+      function saveModalActiveTabToStore() {
+        const targetSpecs = specsByResource[modalSpecResourceId] || makeDefaultSpecs();
         [4, 5, 6, 7, 8].forEach(t => {
-          document.getElementById(`modalSpec${t}Range`).value = specs[t];
-          document.getElementById(`modalSpec${t}Val`).innerText = specs[t];
+          targetSpecs[t] = parseInt(document.getElementById(`modalSpec${t}Range`).value);
+        });
+        specsByResource[modalSpecResourceId] = targetSpecs;
+      }
+
+      function renderModalSpecTabs() {
+        const tabsEl = document.getElementById('modalResourceTabs');
+        tabsEl.innerHTML = '';
+        R.RESOURCES.forEach(res => {
+          const rSpecs = specsByResource[res.id] || makeDefaultSpecs();
+          const rTotal = rSpecs[4] + rSpecs[5] + rSpecs[6] + rSpecs[7] + rSpecs[8];
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn-item' + (res.id === modalSpecResourceId ? ' active' : '');
+          btn.style.color = res.color;
+          btn.style.padding = '6px 8px';
+          btn.innerHTML = `<div>${res.refinedName}</div><span class="sub" style="color: var(--text-muted);">${rTotal}/500</span>`;
+          btn.onclick = () => {
+            saveModalActiveTabToStore();
+            modalSpecResourceId = res.id;
+            loadModalTabSliders();
+            renderModalSpecTabs();
+          };
+          tabsEl.appendChild(btn);
+        });
+      }
+
+      function loadModalTabSliders() {
+        const active = specsByResource[modalSpecResourceId] || makeDefaultSpecs();
+        [4, 5, 6, 7, 8].forEach(t => {
+          document.getElementById(`modalSpec${t}Range`).value = active[t];
+          document.getElementById(`modalSpec${t}Val`).innerText = active[t];
         });
         updateModalSpecTotal();
+      }
+
+      window.openSpecsModal = () => {
+        modalSpecResourceId = selectedResource.id;
+        loadModalTabSliders();
+        renderModalSpecTabs();
         specsModal.classList.add('open');
       };
 
       window.closeSpecsModal = () => {
-        [4, 5, 6, 7, 8].forEach(t => {
-          specs[t] = parseInt(document.getElementById(`modalSpec${t}Range`).value);
-        });
+        saveModalActiveTabToStore();
         try {
-          localStorage.setItem('ALBION_REFINING_SPECS_V2', JSON.stringify({ specs }));
+          localStorage.setItem('ALBION_REFINING_SPECS_V3', JSON.stringify({ specsByResource }));
         } catch (e) {}
         specsModal.classList.remove('open');
         render();
@@ -2096,7 +2177,9 @@
       [4, 5, 6, 7, 8].forEach(t => {
         document.getElementById(`modalSpec${t}Range`).oninput = (e) => {
           document.getElementById(`modalSpec${t}Val`).innerText = e.target.value;
+          saveModalActiveTabToStore();
           updateModalSpecTotal();
+          renderModalSpecTabs();
         };
       });
 
@@ -2276,7 +2359,8 @@
       function render() {
         initButtons();
 
-        // Specs Summary (Max 500/500)
+        // Specs Summary for Active Resource (Max 500/500)
+        const specs = getActiveSpecs();
         const totalSpecPoints = specs[4] + specs[5] + specs[6] + specs[7] + specs[8];
         document.getElementById('specSummaryBadge').innerText = `${totalSpecPoints}/500`;
         const quickTierLbl = document.getElementById('quickSpecTierLabel');
@@ -2503,9 +2587,9 @@
           recSim.stages.forEach(st => {
             const tr = document.createElement('tr');
             const stageBadges = (st.useFocus ? ' <span title="Focus Active" style="color:var(--cyan);">⚡</span>' : '') +
-              (st.heartActive ? ' <span title="Faction Heart Active" style="color:var(--gold);">🫀</span>' : '');
+              (st.heartActive ? ' <span title="Faction Heart Active" style="color:var(--gold);">❤️</span>' : '');
             const heartAddText = st.heartsConsumed > 0
-              ? ` <span style="color:var(--gold); font-size:10px;">+ ${st.heartsConsumed.toLocaleString()} 🫀</span>`
+              ? ` <span style="color:var(--gold); font-size:10px;">+ ${st.heartsConsumed.toLocaleString()} ❤️</span>`
               : '';
             tr.innerHTML = `
               <td>
