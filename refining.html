@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Albion Online — Refining Calculator</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
-  <script src="albion_rules.js"></script>
-  <script src="albion_api.js"></script>
+  <script src="albion_rules.js?v=20261119-1"></script>
+  <script src="albion_api.js?v=20261119-1"></script>
   <style>
     :root {
       --bg: #000000;
@@ -1474,7 +1474,7 @@
       const SESSION_STORAGE_KEY = 'ALBION_REFINING_SESSION_V1';
 
       function syncControlsUI() {
-        const sellTaxPct = (R.getMarketFeeRate({ hasPremium, orderType, directTrade }) * 100).toFixed(1).replace(/\.0$/, '');
+        const sellTaxPct = ((directTrade ? 0.0 : R.getMarketFeeRate({ hasPremium, orderType, directTrade })) * 100).toFixed(1).replace(/\.0$/, '');
         const buyTaxPct = (R.getBuyFeeRate({ buyOrderType }) * 100).toFixed(1).replace(/\.0$/, '');
 
         premiumToggle.className = 'btn-toggle' + (hasPremium ? ' active' : '');
@@ -2358,7 +2358,7 @@
           specs,
         });
 
-        const marketFeeRate = R.getMarketFeeRate({ hasPremium, orderType, directTrade });
+        const marketFeeRate = directTrade ? 0.0 : R.getMarketFeeRate({ hasPremium, orderType, directTrade });
         const buyFeeRate = R.getBuyFeeRate({ buyOrderType });
 
         // Labels
