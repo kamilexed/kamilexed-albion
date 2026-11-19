@@ -1,0 +1,545 @@
+/**
+ * tests.js
+ * Automated Node.js unit tests for Albion Online Economic Rules & Refining Simulation.
+ * Run with: node tests.js
+ */
+
+import './albion_rules.js';
+
+const {
+  RESOURCES,
+  CITIES,
+  TIERS,
+  calculateRRR,
+  calculateFocusCost,
+  calculateStationFee,
+  getMarketFeeRate,
+  getBuyFeeRate,
+  simulateRefining,
+  simulateRecursiveRefining,
+  fitBatchToFocus,
+  getItemId,
+  getPrevTierEnchantment,
+} = globalThis.AlbionRules;
+
+let passedCount = 0;
+let failedCount = 0;
+
+function assert(condition, testName, details = '') {
+  if (condition) {
+    console.log(`  ✓ PASS: ${testName}`);
+    passedCount++;
+  } else {
+    console.error(`  ✗ FAIL: ${testName} ${details ? '(' + details + ')' : ''}`);
+    failedCount++;
+  }
+}
+
+console.log('=====================================================');
+console.log('RUNNING ALBION ONLINE ECONOMIC RULES & ENGINE TESTS');
+console.log('=====================================================\n');
+
+// 1. RRR Tests (LPB / (1 + LPB))
+console.log('[1] Resource Return Rate (RRR) Calculations:');
+assert(!CITIES.some(c => c.id === 'Caerleon' || c.id === 'Brecilien'), 'Caerleon and Brecilien removed from locations');
+
+const rrrNoBonusNoFocus = calculateRRR({ cityId: 'Fort Sterling', resourceId: 'ore', useFocus: false });
+assert(Math.abs(rrrNoBonusNoFocus - 0.18 / 1.18) < 0.0001, 'Royal City base RRR without bonus/focus is 15.25% (0.18/1.18)');
+
+const rrrCityBonusNoFocus = calculateRRR({ cityId: 'Thetford', resourceId: 'ore', useFocus: false });
+assert(Math.abs(rrrCityBonusNoFocus - 0.58 / 1.58) < 0.0001, 'City bonus (Thetford for Ore) without focus is 36.71% (0.58/1.58)');
+
+const rrrNoBonusWithFocus = calculateRRR({ cityId: 'Fort Sterling', resourceId: 'ore', useFocus: true });
+assert(Math.abs(rrrNoBonusWithFocus - 0.77 / 1.77) < 0.0001, 'Off-city with focus is 43.50% (0.77/1.77)');
+
+const rrrCityBonusWithFocus = calculateRRR({ cityId: 'Thetford', resourceId: 'ore', useFocus: true });
+assert(Math.abs(rrrCityBonusWithFocus - 1.17 / 2.17) < 0.0001, 'City bonus (Thetford for Ore) with focus is 53.92% (1.17/2.17)');
+
+const rrrIslandNoFocus = calculateRRR({ cityId: 'Island', resourceId: 'ore', useFocus: false });
+assert(rrrIslandNoFocus === 0, 'Player Island without focus has 0% RRR');
+
+const rrrIslandWithFocus = calculateRRR({ cityId: 'Island', resourceId: 'ore', useFocus: true });
+assert(Math.abs(rrrIslandWithFocus - 0.59 / 1.59) < 0.0001, 'Player Island with focus has 37.11% RRR (0.59/1.59)');
+
+const rrrDaily10 = calculateRRR({ cityId: 'Thetford', resourceId: 'ore', useFocus: true, dailyBonusPercent: 10 });
+assert(Math.abs(rrrDaily10 - 1.27 / 2.27) < 0.0001, 'Daily +10% production bonus adds 0.10 to LPB (1.27/2.27 = 55.95%)');
+
+// 2. Station Nutrition & Usage Fee Tests
+console.log('\n[2] Station Nutrition & Usage Fee (Verified Item Values):');
+// T4.0 Item Value = 16, nutrition = 16 * 0.1125 = 1.8. At 500 tax/100 nut -> 1.8 * 5 = 9.0 silver
+const feeT4 = calculateStationFee({ tier: 4, enchantment: 0, feePer100Nutrition: 500 });
+assert(Math.abs(feeT4 - 9.0) < 0.01, 'T4.0 (IV=16) station fee at 500 tax is 9.0 silver per craft', `Got: ${feeT4}`);
+
+// T4.1 Item Value = 32, nutrition = 3.6 -> fee at 500 tax = 18.0 silver
+const feeT41 = calculateStationFee({ tier: 4, enchantment: 1, feePer100Nutrition: 500 });
+assert(Math.abs(feeT41 - 18.0) < 0.01, 'T4.1 (IV=32) station fee at 500 tax is 18.0 silver per craft', `Got: ${feeT41}`);
+
+// T8.0 Item Value = 256 -> nutrition = 28.8 -> at 500 tax = 144.0 silver
+const feeT8 = calculateStationFee({ tier: 8, enchantment: 0, feePer100Nutrition: 500 });
+assert(Math.abs(feeT8 - 144.0) < 0.01, 'T8.0 (IV=256) station fee at 500 tax is 144.0 silver per craft', `Got: ${feeT8}`);
+
+// 3. Focus Cost & Mastery Efficiency Tests (500/500 max specs -> 37,000 efficiency)
+console.log('\n[3] Focus Cost & Specialization Efficiency (500/500 Max):');
+const focusT2 = calculateFocusCost({ tier: 2, enchantment: 0, targetSpec: 0, otherSpecsAverage: 0 });
+assert(focusT2 === 0, 'T2.0 cannot use focus (0 FP)');
+
+const focusT3Zero = calculateFocusCost({ tier: 3, enchantment: 0, targetSpec: 0, otherSpecsAverage: 0 });
+assert(focusT3Zero === 31, 'T3.0 base focus cost (0 spec) is 31 FP', `Got: ${focusT3Zero}`);
+
+const focusT4Zero = calculateFocusCost({ tier: 4, enchantment: 0, targetSpec: 0, otherSpecsAverage: 0 });
+assert(focusT4Zero === 54, 'T4.0 base focus cost (0 spec) is 54 FP', `Got: ${focusT4Zero}`);
+
+const focusT41Zero = calculateFocusCost({ tier: 4, enchantment: 1, targetSpec: 0, otherSpecsAverage: 0 });
+assert(focusT41Zero === 94, 'T4.1 base focus cost (0 spec) is 94 FP (same as T5.0)', `Got: ${focusT41Zero}`);
+
+const focusT4MaxAll = calculateFocusCost({ tier: 4, enchantment: 0, targetSpec: 100, otherSpecsAverage: 100 });
+assert(focusT4MaxAll === 4, 'T4.0 focus cost at 500/500 spec (37k eff = 54 * 0.5^3.7) is 4 FP', `Got: ${focusT4MaxAll}`);
+
+const focusT8MaxAll = calculateFocusCost({ tier: 8, enchantment: 0, targetSpec: 100, otherSpecsAverage: 100 });
+assert(focusT8MaxAll === 39, 'T8.0 focus cost at 500/500 spec (37k eff = 503 * 0.5^3.7) is 39 FP', `Got: ${focusT8MaxAll}`);
+
+const focusT84MaxAll = calculateFocusCost({ tier: 8, enchantment: 4, targetSpec: 100, otherSpecsAverage: 100 });
+assert(focusT84MaxAll === 363, 'T8.4 focus cost at 500/500 spec (37k eff = 4716 * 0.5^3.7) is 363 FP', `Got: ${focusT84MaxAll}`);
+
+// 4. Market Tax Rate Tests
+console.log('\n[4] Market Taxes & Order Setup Fees:');
+const taxPremSellOrder = getMarketFeeRate({ hasPremium: true, orderType: 'sell_order' });
+assert(Math.abs(taxPremSellOrder - 0.065) < 0.001, 'Premium Sell Order fee is 6.5% (4% tax + 2.5% setup)');
+
+const taxPremInstant = getMarketFeeRate({ hasPremium: true, orderType: 'instant_sell' });
+assert(Math.abs(taxPremInstant - 0.04) < 0.001, 'Premium Instant Sell fee is 4.0% (no setup fee)');
+
+const taxNoPremSellOrder = getMarketFeeRate({ hasPremium: false, orderType: 'sell_order' });
+assert(Math.abs(taxNoPremSellOrder - 0.105) < 0.001, 'Non-Premium Sell Order fee is 10.5% (8% tax + 2.5% setup)');
+
+// 5. Lower-Tier Bar Return & Compounding Conservation Tests
+console.log('\n[5] Lower-Tier RRR Returns & Compounding Conservation:');
+const simComp = simulateRefining({
+  tier: 5,
+  enchantment: 0,
+  batchCrafts: 500, // 1500 raw ore
+  rawPrice: 140,
+  prevTierPrice: 140,
+  sellPrice: 460,
+  rrr: 1.17 / 2.17, // 53.917%
+  compound: true,
+  stationFeePerCraft: 18,
+  useFocus: true,
+  focusCostPerCraft: 6,
+  marketFeeRate: 0.065,
+});
+
+assert(simComp.totalRefinedProduced > 1000, 'Compounding 500 crafts at 53.9% yields >1000 bars', `Produced: ${simComp.totalRefinedProduced}`);
+assert(simComp.totalPrevReturned > 500, 'Lower-tier bars ALSO return via RRR across rounds', `Returned: ${simComp.totalPrevReturned}`);
+assert(simComp.totalPrevBought < simComp.totalPrevTierConsumed * 0.55, 'Returned lower-tier bars are reused, reducing bars bought from ~1084 to ~503', `Bought: ${simComp.totalPrevBought}, Gross Used: ${simComp.totalPrevTierConsumed}`);
+assert(
+  simComp.totalPrevBought - simComp.leftoverPrev === simComp.totalPrevTierConsumed - simComp.totalPrevReturned,
+  'Exact lower-tier bar conservation: Bought - Leftover === Used - Returned'
+);
+assert(
+  Math.abs(simComp.leftoverSalvageValue - (simComp.leftoverRawValue + simComp.leftoverPrevValue)) < 0.01,
+  'Leftover salvage includes both leftover raw and leftover lower-tier bars'
+);
+
+// Single-run consistency check
+const simSingle = simulateRefining({
+  tier: 5,
+  enchantment: 0,
+  batchCrafts: 500,
+  rawPrice: 140,
+  prevTierPrice: 140,
+  sellPrice: 460,
+  rrr: 1.17 / 2.17,
+  compound: false,
+  stationFeePerCraft: 18,
+  useFocus: true,
+  focusCostPerCraft: 6,
+  marketFeeRate: 0.065,
+});
+
+const expectedSingleNetMatCost =
+  (1500 - Math.floor(1500 * (1.17 / 2.17))) * 140 +
+  (500 - Math.floor(500 * (1.17 / 2.17))) * 140 +
+  500 * 18;
+const expectedSingleProfit = 500 * 460 * (1 - 0.065) - expectedSingleNetMatCost;
+assert(
+  Math.abs(simSingle.netProfit - expectedSingleProfit) < 0.01,
+  'Single-run mode properly credits returned raw AND returned lower-tier bars',
+  `Got: ${simSingle.netProfit}, Expected: ${expectedSingleProfit}`
+);
+
+// Break-even verification for both Compound and Single
+const beComp = simulateRefining({
+  tier: 5,
+  enchantment: 0,
+  batchCrafts: 500,
+  rawPrice: 140,
+  prevTierPrice: 140,
+  sellPrice: simComp.breakEvenPrice,
+  rrr: 1.17 / 2.17,
+  compound: true,
+  stationFeePerCraft: 18,
+  useFocus: true,
+  focusCostPerCraft: 6,
+  marketFeeRate: 0.065,
+});
+assert(
+  beComp.netProfit >= 0 && beComp.netProfit < simComp.totalRefinedProduced,
+  'Compounding break-even price yields ~0 profit (within 1 silver rounding per item)',
+  `Net Profit: ${beComp.netProfit}`
+);
+
+const beSingle = simulateRefining({
+  tier: 5,
+  enchantment: 0,
+  batchCrafts: 500,
+  rawPrice: 140,
+  prevTierPrice: 140,
+  sellPrice: simSingle.breakEvenPrice,
+  rrr: 1.17 / 2.17,
+  compound: false,
+  stationFeePerCraft: 18,
+  useFocus: true,
+  focusCostPerCraft: 6,
+  marketFeeRate: 0.065,
+});
+assert(
+  beSingle.netProfit >= 0 && beSingle.netProfit < simSingle.totalRefinedProduced,
+  'Single-run break-even price yields ~0 profit (within 1 silver rounding per item)',
+  `Net Profit: ${beSingle.netProfit}`
+);
+
+// 6. Enchanted Lower-Tier Material Requirements Tests
+console.log('\n[6] Enchanted Lower-Tier Material Requirements:');
+assert(getPrevTierEnchantment(6, 1) === 1, 'Refining T6.1 requires T5.1 lower-tier bar');
+assert(getItemId('METALBAR', 5, getPrevTierEnchantment(6, 1)) === 'T5_METALBAR_LEVEL1@1', 'T6.1 uses T5_METALBAR_LEVEL1@1');
+assert(getPrevTierEnchantment(5, 2) === 2, 'Refining T5.2 requires T4.2 lower-tier bar');
+assert(getPrevTierEnchantment(8, 4) === 4, 'Refining T8.4 requires T7.4 lower-tier bar');
+assert(getPrevTierEnchantment(4, 1) === 0, 'Refining T4.1 requires T3.0 bar (T3 cannot be enchanted)');
+assert(getItemId('METALBAR', 3, getPrevTierEnchantment(4, 1)) === 'T3_METALBAR', 'T4.1 uses T3_METALBAR');
+
+// 7. Individual Tier Specs & Recursive Refining Tests
+console.log('\n[7] Individual Tier Specs & Recursive Refining:');
+const customSpecs = { 4: 100, 5: 80, 6: 50, 7: 20, 8: 10 };
+// T6.0 base = 164; efficiency = 50*250 + (100+80+20+10)*30 = 12,500 + 6,300 = 18,800 -> 164 * 0.5^1.88 = 44.54 -> 45 FP
+const focusWithMap = calculateFocusCost({ tier: 6, enchantment: 0, specs: customSpecs });
+assert(focusWithMap === 45, 'Focus cost with custom specs map is 45 FP (164 * 0.5^1.88)', `Got: ${focusWithMap}`);
+
+const rrrFocus = calculateRRR({ cityId: 'Thetford', resourceId: 'ore', useFocus: true });
+const rrrNoFocus = calculateRRR({ cityId: 'Thetford', resourceId: 'ore', useFocus: false });
+
+const recSim = simulateRecursiveRefining({
+  targetTier: 6,
+  targetEnchantment: 1,
+  batchCrafts: 500,
+  rawPrices: { '6.1': 1050, '5.1': 350, '4.1': 115, '3.0': 25, '2.0': 12 },
+  refinedPrices: { '5.1': 1100, '4.1': 280, '3.0': 42, '2.0': 18 },
+  targetSellPrice: 4300,
+  rrr: rrrFocus,
+  rrrNoFocus: rrrNoFocus,
+  compound: true,
+  feePer100Nutrition: 500,
+  focusMode: 'top_tier',
+  specs: { 4: 100, 5: 100, 6: 100, 7: 100, 8: 100 },
+  marketFeeRate: 0.065,
+});
+
+assert(recSim.stages.length === 5, 'Recursive chain for T6.1 has 5 stages (T6.1, T5.1, T4.1, T3.0, T2.0)');
+assert(
+  recSim.stages[1].crafts < recSim.stages[0].crafts &&
+  recSim.stages[2].crafts < recSim.stages[1].crafts &&
+  recSim.stages[3].crafts < recSim.stages[2].crafts &&
+  recSim.stages[4].crafts < recSim.stages[3].crafts,
+  'Each lower stage scales down by (1 - RRR) instead of repeating full target crafts',
+  `Crafts chain: ${recSim.stages.map(s => s.crafts).join(' -> ')}`
+);
+assert(
+  Math.abs(recSim.stages[0].stageRRR - rrrFocus) < 0.0001 &&
+  Math.abs(recSim.stages[1].stageRRR - rrrNoFocus) < 0.0001,
+  'In top_tier focus mode, Stage 0 gets 53.9% focus RRR while lower stages get 36.7% non-focus RRR'
+);
+
+// Accounting identity check: Recursive Net Profit vs Direct Net Profit (on same net expense basis)
+const directEquivProfit = recSim.netRevenue - recSim.directMarketExpense;
+assert(
+  Math.abs((recSim.netProfit - directEquivProfit) - recSim.selfRefineSavings) < 0.01,
+  'Accounting identity: Recursive Profit - Direct Profit === Self-Refine Savings'
+);
+
+// 8. Focus Pool Fit (10k / 30k FP Quick Batch) Tests
+console.log('\n[8] Focus Pool Batch Sizing (10k & 30k FP):');
+const maxSpecs = { 4: 100, 5: 100, 6: 100, 7: 100, 8: 100 };
+
+// Direct compounding 10k FP on T4.0 (4 FP/craft)
+const fitT4Comp10k = fitBatchToFocus({
+  focusBudget: 10000,
+  tier: 4,
+  enchantment: 0,
+  rrr: rrrFocus,
+  compound: true,
+  isRecursive: false,
+  specs: maxSpecs,
+});
+const simT4Comp10k = simulateRefining({
+  tier: 4,
+  batchCrafts: fitT4Comp10k,
+  rrr: rrrFocus,
+  compound: true,
+  useFocus: true,
+  focusCostPerCraft: calculateFocusCost({ tier: 4, specs: maxSpecs }),
+});
+const simT4CompOver = simulateRefining({
+  tier: 4,
+  batchCrafts: fitT4Comp10k + 1,
+  rrr: rrrFocus,
+  compound: true,
+  useFocus: true,
+  focusCostPerCraft: calculateFocusCost({ tier: 4, specs: maxSpecs }),
+});
+assert(
+  simT4Comp10k.totalFocusSpent <= 10000 && simT4CompOver.totalFocusSpent > 10000,
+  'Direct compound 10k FP finds exact max initial batch without exceeding 10,000 FP',
+  `Batch=${fitT4Comp10k}, Spent=${simT4Comp10k.totalFocusSpent} FP (next=${simT4CompOver.totalFocusSpent} FP)`
+);
+
+// Direct single-run 30k FP on T8.0 (39 FP/craft)
+const fitT8Single30k = fitBatchToFocus({
+  focusBudget: 30000,
+  tier: 8,
+  enchantment: 0,
+  rrr: rrrFocus,
+  compound: false,
+  isRecursive: false,
+  specs: maxSpecs,
+});
+assert(
+  fitT8Single30k === Math.floor(30000 / 39),
+  'Single-run 30k FP on T8.0 (39 FP) matches floor(30000 / 39) = 769',
+  `Got: ${fitT8Single30k}`
+);
+
+// Recursive all-stages 10k FP on T4.0
+const fitRecAll10k = fitBatchToFocus({
+  focusBudget: 10000,
+  tier: 4,
+  enchantment: 0,
+  rrr: rrrFocus,
+  rrrNoFocus,
+  compound: true,
+  isRecursive: true,
+  focusMode: 'all',
+  specs: maxSpecs,
+});
+const simRecAll10k = simulateRecursiveRefining({
+  targetTier: 4,
+  batchCrafts: fitRecAll10k,
+  rrr: rrrFocus,
+  rrrNoFocus,
+  compound: true,
+  focusMode: 'all',
+  specs: maxSpecs,
+});
+assert(
+  simRecAll10k.totalFocusSpent <= 10000 && simRecAll10k.totalFocusSpent >= 9950,
+  'Recursive all-stages 10k FP stays within 10,000 FP budget',
+  `Batch=${fitRecAll10k}, Spent=${simRecAll10k.totalFocusSpent} FP`
+);
+
+// 9. Buy Order Setup Fee & Faction Heart Refining Tests
+console.log('\n[9] Buy Order Setup Fee & Faction Heart Refining:');
+assert(getBuyFeeRate({ buyOrderType: 'buy_order' }) === 0.025, 'Buy Order setup fee is 2.5%');
+assert(getBuyFeeRate({ buyOrderType: 'instant_buy' }) === 0.0, 'Instant Buy setup fee is 0%');
+
+assert(RESOURCES.every(r => r.heartId && r.heartName), 'All 5 resource trees map to a Faction Heart ID and name');
+
+const heartSimT83 = simulateRefining({
+  tier: 8,
+  enchantment: 3,
+  batchCrafts: 100,
+  rawPrice: 68000,
+  prevTierPrice: 118000,
+  sellPrice: 425000,
+  rrr: rrrFocus,
+  compound: true,
+  stationFeePerCraft: 1000,
+  useFocus: true,
+  focusCostPerCraft: calculateFocusCost({ tier: 8, enchantment: 3, specs: maxSpecs }),
+  marketFeeRate: 0.065,
+  buyFeeRate: 0.025,
+  useHeart: true,
+  heartPrice: 40000,
+});
+
+assert(heartSimT83.heartActive === true, 'Heart Refining is active on T8.3');
+assert(heartSimT83.rawReqPerCraft === 4, 'T8.3 Heart Refining uses 4 raw ore instead of 5', `Got: ${heartSimT83.rawReqPerCraft}`);
+assert(heartSimT83.initialRawUnits === 400, '100 initial crafts of T8.3 with Heart uses 400 initial ore');
+assert(
+  heartSimT83.totalHeartsReturned > 0 &&
+  heartSimT83.totalHeartsBought - heartSimT83.leftoverHearts === heartSimT83.netHeartsConsumed &&
+  heartSimT83.netHeartsConsumed === heartSimT83.totalHeartsConsumed - heartSimT83.totalHeartsReturned,
+  'Faction Hearts are affected by RRR and conserve Bought - Leftover === Used - Returned'
+);
+assert(heartSimT83.buyFeeSilver > 0, '2.5% Buy Order setup fee is applied to material costs');
+
+const noHeartSimT83 = simulateRefining({
+  tier: 8,
+  enchantment: 3,
+  batchCrafts: 100,
+  rawPrice: 68000,
+  prevTierPrice: 118000,
+  sellPrice: 425000,
+  rrr: rrrFocus,
+  compound: true,
+  stationFeePerCraft: 1000,
+  useFocus: true,
+  focusCostPerCraft: calculateFocusCost({ tier: 8, enchantment: 3, specs: maxSpecs }),
+  marketFeeRate: 0.065,
+  buyFeeRate: 0.025,
+  useHeart: false,
+});
+assert(
+  heartSimT83.netProfit > noHeartSimT83.netProfit,
+  'When Faction Heart (40k) is cheaper than Raw Ore (68k), Heart Refining increases net profit',
+  `HeartProfit=${Math.round(heartSimT83.netProfit)}, NormalProfit=${Math.round(noHeartSimT83.netProfit)}`
+);
+
+const heartSimT84 = simulateRefining({
+  tier: 8,
+  enchantment: 4,
+  batchCrafts: 100,
+  rawPrice: 205000,
+  prevTierPrice: 350000,
+  sellPrice: 1280000,
+  rrr: rrrFocus,
+  compound: true,
+  useHeart: true,
+  heartPrice: 40000,
+});
+assert(heartSimT84.heartActive === false && heartSimT84.rawReqPerCraft === 5, 'Heart Refining is disabled/ineligible on .4 resources');
+
+const beHeart = simulateRefining({
+  tier: 8,
+  enchantment: 3,
+  batchCrafts: 100,
+  rawPrice: 68000,
+  prevTierPrice: 118000,
+  sellPrice: heartSimT83.breakEvenPrice,
+  rrr: rrrFocus,
+  compound: true,
+  stationFeePerCraft: 1000,
+  useFocus: true,
+  focusCostPerCraft: calculateFocusCost({ tier: 8, enchantment: 3, specs: maxSpecs }),
+  marketFeeRate: 0.065,
+  buyFeeRate: 0.025,
+  useHeart: true,
+  heartPrice: 40000,
+});
+assert(
+  beHeart.netProfit >= 0 && beHeart.netProfit < heartSimT83.totalRefinedProduced,
+  'Heart Refining + Buy Order break-even price yields ~0 profit',
+  `Net Profit: ${beHeart.netProfit}`
+);
+
+// 10. Per-Tier Focus & Faction Heart Selection in Recursive Refining
+console.log('\n[10] Per-Tier Focus & Faction Heart Selection in Recursive Mode:');
+const selectiveRec = simulateRecursiveRefining({
+  targetTier: 8,
+  targetEnchantment: 3,
+  batchCrafts: 100,
+  rawPrices: { '8.3': 68000, '7.3': 21500, '6.3': 7000, '5.3': 2400, '4.3': 740, '3.0': 25, '2.0': 12 },
+  refinedPrices: { '7.3': 118000, '6.3': 28500, '5.3': 7400, '4.3': 1750, '3.0': 42, '2.0': 18 },
+  targetSellPrice: 425000,
+  rrr: rrrFocus,
+  rrrNoFocus: rrrNoFocus,
+  compound: true,
+  feePer100Nutrition: 500,
+  focusTiers: { 3: false, 4: false, 5: false, 6: false, 7: true, 8: true },
+  specs: maxSpecs,
+  marketFeeRate: 0.065,
+  buyFeeRate: 0.025,
+  useHeart: true,
+  heartTiers: { 3: false, 4: false, 5: false, 6: false, 7: false, 8: true },
+  heartPrice: 40000,
+});
+
+// Check Focus applied only to T8 and T7
+const st8 = selectiveRec.stages.find(s => s.tier === 8);
+const st7 = selectiveRec.stages.find(s => s.tier === 7);
+const st6 = selectiveRec.stages.find(s => s.tier === 6);
+const st3 = selectiveRec.stages.find(s => s.tier === 3);
+assert(
+  st8.useFocus === true && st7.useFocus === true && st6.useFocus === false && st3.useFocus === false,
+  'Recursive Focus applied strictly to selected tiers (T8 & T7 only)'
+);
+assert(
+  Math.abs(st7.stageRRR - rrrFocus) < 0.0001 && Math.abs(st6.stageRRR - rrrNoFocus) < 0.0001,
+  'Selected Focus tiers use focus RRR while unchecked tiers use non-focus RRR'
+);
+
+// Check Hearts applied only to T8 (not T7..T3)
+assert(
+  st8.heartActive === true && st8.heartsConsumed > 0 && st7.heartActive === false && st7.heartsConsumed === 0 && st6.heartActive === false,
+  'Recursive Faction Hearts applied strictly to selected tiers (T8 only)'
+);
+
+// Check selective T8-only Hearts beats applying 40k Hearts on cheap T3-T7 ores
+const allHeartsRec = simulateRecursiveRefining({
+  targetTier: 8,
+  targetEnchantment: 3,
+  batchCrafts: 100,
+  rawPrices: { '8.3': 68000, '7.3': 21500, '6.3': 7000, '5.3': 2400, '4.3': 740, '3.0': 25, '2.0': 12 },
+  refinedPrices: { '7.3': 118000, '6.3': 28500, '5.3': 7400, '4.3': 1750, '3.0': 42, '2.0': 18 },
+  targetSellPrice: 425000,
+  rrr: rrrFocus,
+  rrrNoFocus: rrrNoFocus,
+  compound: true,
+  feePer100Nutrition: 500,
+  focusTiers: { 3: false, 4: false, 5: false, 6: false, 7: true, 8: true },
+  specs: maxSpecs,
+  marketFeeRate: 0.065,
+  buyFeeRate: 0.025,
+  useHeart: true,
+  heartTiers: { 3: true, 4: true, 5: true, 6: true, 7: true, 8: true },
+  heartPrice: 40000,
+});
+assert(
+  selectiveRec.netProfit > allHeartsRec.netProfit,
+  'Selective Heart refining (T8 only @ 40k vs 68k ore) yields higher profit than using 40k Hearts on cheaper T3-T7 stages',
+  `Selective=${Math.round(selectiveRec.netProfit)}, AllHearts=${Math.round(allHeartsRec.netProfit)}`
+);
+
+// Check fitBatchToFocus works even when targetTier is NOT focused (only T7 is focused)
+const fitT7OnlyBatch = fitBatchToFocus({
+  focusBudget: 10000,
+  tier: 8,
+  enchantment: 3,
+  rrr: rrrFocus,
+  rrrNoFocus: rrrNoFocus,
+  compound: true,
+  isRecursive: true,
+  focusTiers: { 3: false, 4: false, 5: false, 6: false, 7: true, 8: false },
+  specs: maxSpecs,
+});
+const simT7Only = simulateRecursiveRefining({
+  targetTier: 8,
+  targetEnchantment: 3,
+  batchCrafts: fitT7OnlyBatch,
+  rrr: rrrFocus,
+  rrrNoFocus: rrrNoFocus,
+  compound: true,
+  focusTiers: { 3: false, 4: false, 5: false, 6: false, 7: true, 8: false },
+  specs: maxSpecs,
+});
+assert(
+  fitT7OnlyBatch > 10 && simT7Only.totalFocusSpent <= 10000 && simT7Only.totalFocusSpent >= 9700,
+  'fitBatchToFocus handles recursive mode even when only lower tiers (T7) use Focus',
+  `Batch=${fitT7OnlyBatch}, Spent=${simT7Only.totalFocusSpent} FP`
+);
+
+console.log('\n=====================================================');
+console.log(`TEST RESULTS: ${passedCount} PASSED, ${failedCount} FAILED`);
+console.log('=====================================================');
+
+if (failedCount > 0) {
+  process.exit(1);
+}

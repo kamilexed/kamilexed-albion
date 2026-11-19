@@ -1,0 +1,9 @@
+{
+  "name": "albion-calculators",
+  "version": "1.0.0",
+  "description": "Standalone Albion Online Calculators & Economic Simulators",
+  "type": "module",
+  "scripts": {
+    "test": "node tests.js"
+  }
+}

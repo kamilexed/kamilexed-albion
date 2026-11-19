@@ -1,0 +1,2685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Albion Online — Refining Calculator</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+  <script src="albion_rules.js"></script>
+  <script src="albion_api.js"></script>
+  <style>
+    :root {
+      --bg: #000000;
+      --surface: #141312;
+      --surface-alt: #1c1a17;
+      --surface-well: #0c0b0a;
+      --surface-hover: #26221e;
+      --border: #d4751c;
+      --border-subtle: #383028;
+      --text: #f5f5f5;
+      --text-muted: #a8a29e;
+      --accent: #e07b1d;
+      --accent-active-bg: #3b2410;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #eab308;
+      --cyan: #38bdf8;
+      --purple: #c084fc;
+      --gold: #facc15;
+
+      /* Albion Tier Colors */
+      --t2-color: #86efac;
+      --t3-color: #86efac;
+      --t4-color: #60a5fa;
+      --t5-color: #f87171;
+      --t6-color: #fb923c;
+      --t7-color: #facc15;
+      --t8-color: #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.45;
+      min-height: 100vh;
+    }
+
+    /* Full-Height Fixed Left Side Menu */
+    .left-sidebar {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      bottom: 12px;
+      width: 64px;
+      z-index: 300;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 8px;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.18s ease;
+      overflow: hidden;
+    }
+
+    .left-sidebar.expanded {
+      width: 200px;
+      padding: 12px 14px;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+      border-bottom: 1.5px solid var(--border);
+      min-height: 32px;
+    }
+
+    .left-sidebar.expanded .sidebar-header {
+      justify-content: space-between;
+    }
+
+    .sidebar-title {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--accent);
+      white-space: nowrap;
+      display: none;
+    }
+
+    .left-sidebar.expanded .sidebar-title {
+      display: block;
+    }
+
+    .sidebar-toggle-btn {
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      width: 38px;
+      height: 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .sidebar-toggle-btn:hover {
+      background: var(--surface-hover);
+      border-color: var(--border);
+    }
+
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 6px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--text-muted);
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      line-height: 1;
+    }
+
+    .sidebar-link.active {
+      background: var(--accent-active-bg);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    .sidebar-link-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .sidebar-link-label {
+      display: none;
+      line-height: 1;
+    }
+    .left-sidebar.expanded .sidebar-link-label {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    /* Main Content Area stretched from Side Menu to Right Edge */
+    .main-shell {
+      margin-left: 88px;
+      padding: 0 12px 28px 4px;
+      transition: margin-left 0.18s ease;
+    }
+    body.sidebar-expanded .main-shell {
+      margin-left: 224px;
+    }
+
+    /* Sticky Top Island stretched completely from side menu to right side */
+    .sticky-top-wrapper {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: var(--bg);
+      padding: 12px 0 10px 0;
+    }
+
+    .top-island {
+      width: 100%;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .top-island-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+
+    .controls-cluster {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Flat Card Styling */
+    .card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+
+    .card-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .pill-select, .btn-toggle {
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      padding: 6px 11px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s;
+    }
+
+    .pill-select:hover, .btn-toggle:hover {
+      background: var(--surface-hover);
+      border-color: var(--border);
+    }
+
+    .btn-toggle.active {
+      background: var(--accent-active-bg);
+      border-color: var(--border);
+      color: #ffffff;
+    }
+
+    .pill-select:disabled, .btn-toggle:disabled, .btn-item:disabled {
+      opacity: 0.4;
+      filter: grayscale(0.8);
+      cursor: not-allowed;
+      border-color: var(--border-subtle) !important;
+      background: #0d0c0b !important;
+    }
+
+    /* Multi-Tier Picker Popovers */
+    .tier-picker-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .tier-picker-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      z-index: 500;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      min-width: 248px;
+    }
+    .tier-picker-menu.open { display: block; }
+
+    .tier-picker-header {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      letter-spacing: 0.4px;
+    }
+
+    .tier-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 5px;
+      margin-bottom: 8px;
+    }
+
+    .tier-chip {
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      border-radius: 6px;
+      padding: 6px 2px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+    }
+    .tier-chip:hover {
+      background: var(--surface-hover);
+      border-color: var(--border);
+    }
+    .tier-chip.active {
+      background: var(--accent-active-bg);
+      border-color: var(--border);
+    }
+    .tier-chip.dimmed { opacity: 0.45; }
+    .tier-chip:disabled { opacity: 0.3; cursor: not-allowed; filter: grayscale(0.8); }
+
+    .tier-picker-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 7px;
+    }
+
+    .tier-action-link {
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      border-radius: 5px;
+      padding: 3px 7px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .tier-action-link:hover { border-color: var(--border); color: var(--text); }
+
+    /* Main Grid Layout */
+    .main-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 4px;
+    }
+
+    @media (min-width: 1120px) {
+      .main-layout.has-sidebar {
+        display: grid;
+        grid-template-columns: 1fr 410px;
+        gap: 16px;
+        align-items: start;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .left-sidebar, .left-sidebar.expanded {
+        position: static;
+        width: 100%;
+        margin: 10px 0 0 0;
+      }
+      .main-shell, body.sidebar-expanded .main-shell {
+        margin-left: 0;
+        padding: 0 10px 24px 10px;
+      }
+      .left-sidebar .sidebar-title,
+      .left-sidebar .sidebar-link-label {
+        display: inline-flex;
+      }
+    }
+
+    .main-column {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 860px) {
+      .grid-2 { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* Selector Button Groups */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .btn-item {
+      flex: 1;
+      min-width: 64px;
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.12s, border-color 0.12s;
+    }
+
+    .btn-item:hover {
+      background: var(--surface-hover);
+      border-color: var(--border);
+    }
+
+    .btn-item.active {
+      background: var(--accent-active-bg);
+      border-color: var(--border);
+    }
+
+    .btn-item .sub {
+      font-size: 10px;
+      opacity: 0.85;
+      font-weight: 500;
+      display: block;
+      margin-top: 2px;
+    }
+
+    /* Tier Color Classes */
+    .tier-color-2, .tier-color-3 { color: var(--t2-color) !important; }
+    .tier-color-4 { color: var(--t4-color) !important; }
+    .tier-color-5 { color: var(--t5-color) !important; }
+    .tier-color-6 { color: var(--t6-color) !important; }
+    .tier-color-7 { color: var(--t7-color) !important; }
+    .tier-color-8 { color: var(--t8-color) !important; }
+
+    /* Enchant Color Classes */
+    .ench-color-0 { color: #d4d4d8 !important; }
+    .ench-color-1 { color: #4ade80 !important; }
+    .ench-color-2 { color: #60a5fa !important; }
+    .ench-color-3 { color: #c084fc !important; }
+    .ench-color-4 { color: #facc15 !important; }
+
+    /* Recipe Callout */
+    .recipe-callout {
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .recipe-items { display: flex; align-items: center; gap: 8px; }
+
+    .item-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 6px;
+      background: #000000;
+      border: 1px solid var(--border-subtle);
+      vertical-align: middle;
+    }
+
+    .matrix-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 6px;
+      background: #000000;
+      border: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+
+    /* Inputs */
+    .field-row { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 12px; }
+    @media (min-width: 600px) {
+      .field-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+      .field-row-2 { grid-template-columns: 1fr 1fr; }
+      .field-row-auto { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    }
+
+    .field-box {
+      background: var(--surface-alt);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .field-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .field-input {
+      width: 100%;
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: 700;
+      outline: none;
+    }
+
+    .field-input:focus { border-color: var(--border); }
+
+    .inline-input {
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 12px;
+      outline: none;
+    }
+    .inline-input:focus { border-color: var(--border); }
+
+    /* Clickable Price Age Indicator */
+    .price-age {
+      font-size: 10px;
+      font-family: monospace;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--surface-well);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      transition: background 0.12s, transform 0.1s;
+    }
+    .price-age:hover {
+      background: var(--surface-hover);
+      text-decoration: underline;
+    }
+    .age-fresh { color: var(--success); border: 1px solid var(--success); }
+    .age-moderate { color: var(--cyan); border: 1px solid var(--cyan); }
+    .age-aging { color: var(--warning); border: 1px solid var(--warning); }
+    .age-stale { color: var(--danger); border: 1px solid var(--danger); }
+
+    /* KPI Results */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      font-weight: 700;
+      padding-bottom: 6px;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .kpi-val {
+      font-size: 23px;
+      font-weight: 800;
+      font-family: monospace;
+      margin: 10px 0 6px;
+    }
+
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    /* Tables */
+    .breakdown-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      font-family: monospace;
+    }
+
+    .breakdown-table tr { border-bottom: 1px solid var(--border-subtle); }
+    .breakdown-table td, .breakdown-table th { padding: 8px 10px; text-align: left; }
+    .breakdown-table th {
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      border-bottom: 1.5px solid var(--border);
+    }
+    .breakdown-table td:last-child { text-align: right; font-weight: 700; }
+
+    .text-pos { color: var(--success); }
+    .text-neg { color: var(--danger); }
+    .text-accent { color: var(--accent); }
+
+    /* Tooltip */
+    [data-tooltip] { position: relative; cursor: help; border-bottom: 1px dotted #737373; }
+    [data-tooltip]:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface-well);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      width: max-content;
+      max-width: 300px;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    /* Action Buttons */
+    .btn-action {
+      background: var(--accent);
+      color: #000000;
+      border: 1px solid var(--border);
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-action:hover { background: #f08a24; }
+    .btn-action:disabled { opacity: 0.6; cursor: wait; }
+
+    .btn-secondary {
+      background: var(--surface-well);
+      color: var(--text);
+      border: 1px solid var(--border-subtle);
+    }
+    .btn-secondary:hover { background: var(--surface-hover); border-color: var(--border); }
+
+    /* Side Price Matrix Panel */
+    .side-price-panel {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      height: fit-content;
+      position: sticky;
+      top: 118px;
+    }
+
+    .price-matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      font-family: monospace;
+    }
+
+    .price-matrix-table tr { border-bottom: 1px solid var(--border-subtle); }
+    .price-matrix-table th {
+      text-align: left;
+      padding: 6px 5px;
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      border-bottom: 1.5px solid var(--border);
+    }
+    .price-matrix-table td { padding: 8px 5px; vertical-align: middle; }
+
+    .matrix-tier-cell {
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .matrix-tier-cell:hover { text-decoration: underline; }
+
+    .matrix-cell {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .matrix-input-col {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .price-matrix-input {
+      width: 92px;
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      padding: 4px 6px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-family: monospace;
+      font-weight: 700;
+      outline: none;
+    }
+    .price-matrix-input:focus { border-color: var(--border); }
+
+    /* Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-backdrop.open { display: flex; }
+
+    .modal-box {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 520px;
+      padding: 20px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .spec-card {
+      background: var(--surface-alt);
+      border: 1px solid var(--border-subtle);
+      padding: 10px 12px;
+      border-radius: 8px;
+    }
+
+    .spec-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Full-Height Left Side Menu (Top to Bottom) -->
+  <aside id="leftSidebar" class="left-sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Tools</span>
+      <button id="sidebarToggleBtn" class="sidebar-toggle-btn" type="button" title="Expand/Collapse Menu">
+        ☰
+      </button>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="refining.html" class="sidebar-link active" title="Refining Calculator">
+        <span class="sidebar-link-icon">🔨</span>
+        <span class="sidebar-link-label">Refining</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Main Workspace Container stretched from Side Menu to Right Edge -->
+  <div class="main-shell">
+
+    <!-- Sticky Top Island (Always 2 Button Rows Tall) -->
+    <div class="sticky-top-wrapper">
+      <header class="top-island">
+        <div class="top-island-row">
+          <div class="controls-cluster">
+            <button id="premiumToggle" class="btn-toggle active" type="button" title="Toggles Premium status">
+              👑 Premium: <span style="color: var(--gold);">ON (4%)</span>
+            </button>
+
+            <button id="buyOrderToggle" class="btn-toggle active" type="button" title="Buy Order (+2.5% setup fee) vs Instant Buy (0% fee)">
+              🛒 Buy: <span style="color: var(--accent);">Buy Order (+2.5%)</span>
+            </button>
+
+            <button id="orderTypeToggle" class="btn-toggle active" type="button" title="Sell Order (+2.5% setup fee) vs Instant Sell">
+              📝 Order: <span style="color: var(--accent);">Sell Order (+2.5%)</span>
+            </button>
+          </div>
+
+          <div class="controls-cluster">
+            <button id="openSpecsBtn" class="pill-select" type="button" style="border-color: var(--border); color: var(--t4-color);">
+              🎯 Specs (<span id="specSummaryBadge">500/500</span>)
+            </button>
+
+            <button id="togglePriceMatrixBtn" class="btn-toggle active" type="button">
+              📋 Price Matrix
+            </button>
+          </div>
+        </div>
+
+        <div class="top-island-row">
+          <div class="controls-cluster">
+            <button id="focusToggle" class="btn-toggle active" type="button" title="Use Crafting Focus">
+              ⚡ Focus: <span style="color: var(--cyan);">ON</span>
+            </button>
+
+            <div id="focusPickerWrap" class="tier-picker-wrap">
+              <button id="focusTiersBtn" class="pill-select" type="button" title="Select individual tiers to use Focus on (None disables Focus)">
+                🎯 Focus: <span id="focusTiersSummary"></span> ▾
+              </button>
+              <div id="focusTiersMenu" class="tier-picker-menu">
+                <div class="tier-picker-header">Use Focus on Tiers (Recursive / Direct)</div>
+                <div id="focusTiersGrid" class="tier-picker-grid"></div>
+                <div class="tier-picker-actions">
+                  <button type="button" class="tier-action-link" data-focus-preset="target">Target Only</button>
+                  <button type="button" class="tier-action-link" data-focus-preset="all">All (T3–T8)</button>
+                  <button type="button" class="tier-action-link" data-focus-preset="none">None</button>
+                </div>
+              </div>
+            </div>
+
+            <button id="compoundToggle" class="btn-toggle active" type="button" title="Re-refine returned materials iteratively">
+              🔄 Compounding: <span style="color: var(--success);">ON</span>
+            </button>
+
+            <button id="recursiveToggleBtn" class="btn-toggle" type="button" title="Self-refine entire lower-tier chain from T2 raw">
+              🔗 Recursive: <span style="color: var(--text-muted);">OFF</span>
+            </button>
+
+            <button id="heartToggle" class="btn-toggle" type="button" title="Substitutes 1 raw resource per craft with 1 Faction Heart (affected by RRR, disabled on .4)">
+              🫀 <span id="heartBtnName">Mountainheart</span>: <span id="heartToggleStatus" style="color: var(--text-muted);">OFF</span>
+            </button>
+
+            <div id="heartPickerWrap" class="tier-picker-wrap">
+              <button id="heartTiersBtn" class="pill-select" type="button" title="Select individual tiers to use Faction Hearts on">
+                🫀 Tiers: <span id="heartTiersSummary"></span> ▾
+              </button>
+              <div id="heartTiersMenu" class="tier-picker-menu">
+                <div class="tier-picker-header">Use Faction Heart on Tiers</div>
+                <div id="heartTiersGrid" class="tier-picker-grid"></div>
+                <div class="tier-picker-actions">
+                  <button type="button" class="tier-action-link" data-heart-preset="target">Target Only</button>
+                  <button type="button" class="tier-action-link" data-heart-preset="all">All (T3–T8)</button>
+                  <button type="button" class="tier-action-link" data-heart-preset="none">None</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+    </div>
+
+    <!-- Calculator + Price Matrix Grid -->
+    <div id="mainLayout" class="main-layout has-sidebar">
+
+      <!-- Main Calculator Column -->
+      <div class="main-column">
+
+        <!-- Top 2-Column Config Grid -->
+        <div class="grid-2">
+
+          <!-- Card 1: Resource & Recipe Selection -->
+          <section class="card">
+            <div class="card-header">
+              <h2 class="card-title">1. Resource &amp; Recipe</h2>
+              <span id="bonusCityLabel" style="font-size: 11px; color: var(--gold); font-family: monospace; font-weight: 700;">
+                Bonus: Thetford
+              </span>
+            </div>
+
+            <div class="section-label">Resource Type</div>
+            <div class="btn-group" id="resourceGroup"></div>
+
+            <div class="section-label">Tier Level</div>
+            <div class="btn-group" id="tierGroup"></div>
+
+            <div id="enchantmentSection">
+              <div class="section-label">Enchantment Level</div>
+              <div class="btn-group" id="enchantGroup"></div>
+            </div>
+
+            <div class="recipe-callout">
+              <div class="recipe-items">
+                <img id="rawIcon" class="item-icon" src="" alt="Raw">
+                <span id="heartRecipePlus" style="font-weight: 700; color: var(--gold); display: none;">+</span>
+                <img id="heartRecipeIcon" class="item-icon" src="" alt="Heart" style="display: none;">
+                <span style="font-weight: 700; color: var(--accent);">+</span>
+                <img id="prevIcon" class="item-icon" src="" alt="Prev">
+                <span style="font-weight: 700; color: var(--success);">➔</span>
+                <img id="refinedIcon" class="item-icon" src="" alt="Refined">
+              </div>
+              <div style="text-align: right; font-family: monospace;">
+                <div id="recipeText" style="font-size: 12px; font-weight: 700;"></div>
+                <div id="itemIdText" style="font-size: 10px; color: var(--text-muted);"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Card 2: Options -->
+          <section class="card">
+            <div class="card-header">
+              <h2 class="card-title">2. Options</h2>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 11px; color: var(--text-muted);">Effective RRR:</span>
+                <span id="rrrBadge" style="font-size: 12px; font-weight: 800; font-family: monospace; color: var(--success); background: var(--surface-well); border: 1px solid var(--success); padding: 2px 8px; border-radius: 6px;" data-tooltip="Resource Return Rate applied to every craft">
+                  53.9%
+                </span>
+              </div>
+            </div>
+
+            <div class="section-label">Refining Location</div>
+            <div class="btn-group" id="cityGroup"></div>
+
+            <!-- Custom RRR Box -->
+            <div id="customRRRBox" style="display: none; background: var(--surface-alt); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 9px 12px; margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                <span style="color: var(--text-muted); font-weight: 600;">Custom Hideout / Zone RRR (%):</span>
+                <input type="number" id="customRRRInput" min="0" max="90" step="0.1" value="53.9" class="inline-input" style="width: 80px; color: var(--success);">
+              </div>
+            </div>
+
+            <!-- Daily Bonus & Station Fee -->
+            <div class="field-row field-row-2" style="margin-bottom: 12px;">
+              <div class="field-box">
+                <div class="field-label"><span>Daily Production Event</span></div>
+                <select id="dailyBonusSelect" class="field-input" style="font-family: inherit; font-weight: 600; font-size: 12px; color: var(--gold);">
+                  <option value="0">None (0%)</option>
+                  <option value="10">+10% Production Bonus</option>
+                  <option value="20">+20% Production Bonus</option>
+                </select>
+              </div>
+
+              <div class="field-box">
+                <div class="field-label">
+                  <span>Station Fee / 100 Nut.</span>
+                  <span style="font-size: 10px; color: var(--accent);">Silver</span>
+                </div>
+                <input type="number" id="stationFeeInput" min="0" value="500" class="field-input" style="color: var(--gold);">
+              </div>
+            </div>
+
+            <!-- Focus Cost Summary Box -->
+            <div style="background: var(--surface-well); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 4px;">
+                <span style="font-weight: 600; color: var(--text-muted);">Focus Cost / Craft:</span>
+                <span id="focusCostVal" style="font-weight: 800; font-family: monospace; color: var(--cyan); font-size: 14px;">4 FP</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted);">
+                <span><span id="quickSpecTierLabel">T4</span> Spec: <strong id="quickSpecVal" style="color: var(--text);">100</strong> | Total: <strong id="quickTotalSpecVal" style="color: var(--gold);">500/500</strong></span>
+                <button type="button" onclick="openSpecsModal()" style="background: none; border: none; color: var(--cyan); font-weight: 700; font-size: 11px; cursor: pointer; text-decoration: underline;">
+                  Edit Specs ➔
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Card 3: Batch & Market Prices -->
+        <section class="card">
+          <div class="card-header">
+            <h2 class="card-title">3. Craft Batch &amp; Market Prices</h2>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
+              <span style="font-size: 11px; color: var(--text-muted);">Quick Batch:</span>
+              <button class="btn-item" style="padding: 3px 8px; min-width: auto;" onclick="setBatch(100)">100</button>
+              <button class="btn-item" style="padding: 3px 8px; min-width: auto;" onclick="setBatch(500)">500</button>
+              <button class="btn-item" style="padding: 3px 8px; min-width: auto;" onclick="setBatch(1000)">1,000</button>
+              <button class="btn-item" style="padding: 3px 8px; min-width: auto; color: var(--cyan);" onclick="fitFocusPool(10000)">10k FP</button>
+              <button class="btn-item" style="padding: 3px 8px; min-width: auto; color: var(--cyan);" onclick="fitFocusPool(30000)">30k FP</button>
+            </div>
+          </div>
+
+          <div class="field-row field-row-auto">
+            <div class="field-box">
+              <div class="field-label">
+                <span id="rawPriceLabel">Raw Buy Order</span>
+                <button type="button" id="rawAgeBadge" class="price-age age-stale" title="Click to refresh price from Europe AODP">Manual</button>
+              </div>
+              <input type="number" id="rawPriceInput" min="0" class="field-input" value="50">
+            </div>
+
+            <div class="field-box" id="heartPriceBox" style="display: none;">
+              <div class="field-label">
+                <span id="heartPriceLabel" style="color: var(--gold);">Faction Heart Buy</span>
+                <button type="button" id="heartAgeBadge" class="price-age age-stale" title="Click to refresh price from Europe AODP">Manual</button>
+              </div>
+              <input type="number" id="heartPriceInput" min="0" class="field-input" value="40000" style="color: var(--gold);">
+            </div>
+
+            <div class="field-box" id="prevTierBox">
+              <div class="field-label">
+                <span id="prevPriceLabel">Lower Tier Refined Buy</span>
+                <button type="button" id="prevAgeBadge" class="price-age age-stale" title="Click to refresh price from Europe AODP">Manual</button>
+              </div>
+              <input type="number" id="prevPriceInput" min="0" class="field-input" value="40">
+            </div>
+
+            <div class="field-box">
+              <div class="field-label">
+                <span>Refined Sell Price</span>
+                <button type="button" id="sellAgeBadge" class="price-age age-stale" title="Click to refresh price from Europe AODP">Manual</button>
+              </div>
+              <input type="number" id="sellPriceInput" min="0" class="field-input" value="150" style="color: var(--success);">
+            </div>
+          </div>
+
+          <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px;">
+            <div style="color: var(--text-muted); font-size: 11px;">
+              Batch Size: <input type="number" id="batchSizeInput" min="1" value="500" class="inline-input" style="width: 90px;"> initial crafts
+              <span id="batchCraftsPreview" style="color: var(--cyan); font-family: monospace; margin-left: 6px;"></span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted);">
+              Fees: <strong id="appliedFeeText" style="color: var(--accent); font-family: monospace;">Sell 6.5% · Buy 2.5%</strong>
+            </div>
+          </div>
+        </section>
+
+        <!-- KPI Summary Cards -->
+        <div class="kpi-grid">
+          <div id="profitCard" class="kpi-card">
+            <div class="kpi-label">Total Net Profit</div>
+            <div id="netProfitVal" class="kpi-val text-pos" data-tooltip="Total sales revenue minus all material, station, and market expenses">
+              +0 Silver
+            </div>
+            <div id="profitSub" class="kpi-sub">+0.0% ROI · 0 / craft</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Silver / Focus (S/FP)</div>
+            <div id="silverFocusVal" class="kpi-val" style="color: var(--cyan);" data-tooltip="Net Profit divided by total Focus Points spent">
+              0 S/FP
+            </div>
+            <div id="focusRatingSub" class="kpi-sub">Total Spent: 0 FP</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Total Refined Output</div>
+            <div id="outputVal" class="kpi-val" style="color: var(--gold);" data-tooltip="Total finished bars produced">
+              0 Refined
+            </div>
+            <div id="outputSub" class="kpi-sub">Buy: 0 Raw + 0 Lower-Tier</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Break-Even Sell Price</div>
+            <div id="breakEvenVal" class="kpi-val" style="color: var(--purple);" data-tooltip="Minimum unit sell price required to cover all costs and taxes">
+              0 Silver
+            </div>
+            <div class="kpi-sub">Minimum unit price to break even</div>
+          </div>
+        </div>
+
+        <!-- Recursive Production Chain Card -->
+        <section id="recursiveChainSection" class="card" style="display: none;">
+          <div class="card-header">
+            <h2 class="card-title">🔄 Recursive Production Chain (Self-Refined)</h2>
+            <span id="recursiveStagesCount" style="font-size: 11px; color: var(--purple); font-family: monospace; font-weight: 700;">5 Tiers</span>
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table class="breakdown-table">
+              <thead>
+                <tr>
+                  <th>Stage</th>
+                  <th>Crafts</th>
+                  <th>Raw Needed</th>
+                  <th>Raw Price</th>
+                  <th>Station Fee</th>
+                  <th>Focus</th>
+                  <th style="text-align: right;">Output</th>
+                </tr>
+              </thead>
+              <tbody id="recursiveTableBody"></tbody>
+            </table>
+          </div>
+
+          <div style="margin-top: 14px; padding: 12px; background: var(--surface-well); border: 1px solid var(--border-subtle); border-radius: 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; font-family: monospace; font-size: 12px;">
+            <div>
+              <div style="color: var(--text-muted); font-size: 11px;">Direct Buy Market Cost:</div>
+              <div id="compMarketCost" style="font-weight: 700; color: var(--danger); font-size: 14px;">0 Silver</div>
+            </div>
+            <div>
+              <div style="color: var(--text-muted); font-size: 11px;">Self-Refined Chain Cost:</div>
+              <div id="compSelfCost" style="font-weight: 700; color: var(--cyan); font-size: 14px;">0 Silver</div>
+            </div>
+            <div>
+              <div style="color: var(--text-muted); font-size: 11px;">Self-Refining Savings:</div>
+              <div id="compSavings" style="font-weight: 800; font-size: 14px;">+0 Silver</div>
+              <div id="compSavingsSub" style="font-size: 10px; color: var(--text-muted);">vs buying lower tier</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Financial Breakdown & Export -->
+        <section class="card">
+          <div class="card-header">
+            <h2 class="card-title">Financial Breakdown &amp; Export</h2>
+            <div style="display: flex; gap: 8px;">
+              <button id="copyDiscordBtn" class="btn-action btn-secondary" type="button">
+                📋 Copy for Discord
+              </button>
+              <button id="exportCsvBtn" class="btn-action btn-secondary" type="button">
+                📊 Export CSV
+              </button>
+            </div>
+          </div>
+
+          <table class="breakdown-table">
+            <tbody>
+              <tr>
+                <td id="labelRawCost">Initial Raw Material Cost</td>
+                <td id="rowRawCost" class="text-neg">-0</td>
+              </tr>
+              <tr id="rowHeartCostWrapper" style="display: none;">
+                <td id="rowHeartCostLabel">Faction Hearts Consumed</td>
+                <td id="rowHeartCost" class="text-neg">-0</td>
+              </tr>
+              <tr id="rowPrevTierWrapper">
+                <td id="rowPrevTierLabel">Lower-Tier Bars Bought</td>
+                <td id="rowPrevCost" class="text-neg">-0</td>
+              </tr>
+              <tr id="rowBuyFeeWrapper" style="display: none;">
+                <td>Buy Order Setup Fee (+2.5%)</td>
+                <td id="rowBuyFee" class="text-neg">-0</td>
+              </tr>
+              <tr>
+                <td>Station Nutrition Usage Fees</td>
+                <td id="rowStationFee" class="text-neg">-0</td>
+              </tr>
+              <tr style="background: var(--surface-alt); font-weight: 800;">
+                <td>TOTAL PRODUCTION EXPENSE</td>
+                <td id="rowTotalExpense" class="text-neg">-0</td>
+              </tr>
+              <tr>
+                <td>Gross Refined Product Sales</td>
+                <td id="rowGrossRevenue" class="text-pos">+0</td>
+              </tr>
+              <tr>
+                <td>Market Taxes &amp; Setup Fees</td>
+                <td id="rowMarketTax" class="text-neg">-0</td>
+              </tr>
+              <tr id="rowSalvageWrapper">
+                <td>Leftover Returned Materials Value</td>
+                <td id="rowSalvage" class="text-pos">+0</td>
+              </tr>
+              <tr style="background: var(--surface-well); font-weight: 900; font-size: 13px;">
+                <td>FINAL NET PROFIT</td>
+                <td id="rowNetProfit" class="text-pos">+0 Silver</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+      </div>
+
+      <!-- Right Column: Market Price Matrix Side Window -->
+      <aside id="priceMatrixSidebar" class="side-price-panel">
+        <div class="card-header" style="margin-bottom: 10px; padding-bottom: 8px;">
+          <div>
+            <h3 class="card-title" style="font-size: 12px;">Market Price Matrix</h3>
+            <div style="font-size: 10px; color: var(--text-muted);" id="sideResourceName">All Ore &amp; Bar Prices (Europe)</div>
+          </div>
+          <button id="fetchAllPricesBtn" class="btn-action" type="button" style="padding: 5px 11px; font-size: 11px;">
+            📥 Fetch All
+          </button>
+        </div>
+
+        <div style="max-height: 75vh; overflow-y: auto; padding-right: 4px;">
+          <table class="price-matrix-table">
+            <thead>
+              <tr>
+                <th>Tier</th>
+                <th>Raw Buy</th>
+                <th>Refined Sell</th>
+              </tr>
+            </thead>
+            <tbody id="priceMatrixBody"></tbody>
+          </table>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+  <!-- Destiny Board Specs Modal -->
+  <div id="specsModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="card-header">
+        <h2 class="card-title" style="font-size: 15px;">🎯 Destiny Board Refining Specs</h2>
+        <button type="button" onclick="closeSpecsModal()" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer;">✕</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+        <div class="spec-card">
+          <div class="spec-header">
+            <span class="tier-color-4">T4 Adept Spec</span>
+            <span id="modalSpec4Val" class="tier-color-4" style="font-family: monospace;">100</span>
+          </div>
+          <input type="range" id="modalSpec4Range" min="0" max="100" value="100" style="width: 100%;">
+        </div>
+
+        <div class="spec-card">
+          <div class="spec-header">
+            <span class="tier-color-5">T5 Expert Spec</span>
+            <span id="modalSpec5Val" class="tier-color-5" style="font-family: monospace;">100</span>
+          </div>
+          <input type="range" id="modalSpec5Range" min="0" max="100" value="100" style="width: 100%;">
+        </div>
+
+        <div class="spec-card">
+          <div class="spec-header">
+            <span class="tier-color-6">T6 Master Spec</span>
+            <span id="modalSpec6Val" class="tier-color-6" style="font-family: monospace;">100</span>
+          </div>
+          <input type="range" id="modalSpec6Range" min="0" max="100" value="100" style="width: 100%;">
+        </div>
+
+        <div class="spec-card">
+          <div class="spec-header">
+            <span class="tier-color-7">T7 Grandmaster Spec</span>
+            <span id="modalSpec7Val" class="tier-color-7" style="font-family: monospace;">100</span>
+          </div>
+          <input type="range" id="modalSpec7Range" min="0" max="100" value="100" style="width: 100%;">
+        </div>
+
+        <div class="spec-card" style="grid-column: span 2;">
+          <div class="spec-header">
+            <span class="tier-color-8">T8 Elder Spec</span>
+            <span id="modalSpec8Val" class="tier-color-8" style="font-family: monospace;">100</span>
+          </div>
+          <input type="range" id="modalSpec8Range" min="0" max="100" value="100" style="width: 100%;">
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 12px; font-family: monospace; color: var(--text-muted);">
+          Total: <strong id="modalTotalSpecVal" style="color: var(--gold);">500 / 500</strong>
+        </span>
+        <button type="button" class="btn-action" onclick="closeSpecsModal()" style="padding: 8px 22px;">
+          Save &amp; Apply Specs
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const R = window.AlbionRules;
+      const API = window.AlbionApi;
+      const SERVER = 'europe';
+
+      // State
+      let selectedResource = R.RESOURCES[0]; // Ore
+      let selectedTier = 4;
+      let selectedEnchant = 0;
+      let selectedCity = R.CITIES[0]; // Thetford
+      let useFocus = true;
+      let compound = true;
+      let hasPremium = true;
+      let buyOrderType = 'buy_order';
+      let orderType = 'sell_order';
+      let useHeart = false;
+      let isRecursive = false;
+      let focusTiers = { 3: false, 4: true, 5: false, 6: false, 7: false, 8: false };
+      let focusTiersTrackTarget = true;
+      let heartTiers = { 3: false, 4: true, 5: false, 6: false, 7: false, 8: false };
+      let heartTiersTrackTarget = true;
+      let dailyBonusPercent = 0;
+      let customRRR = 53.9;
+      let stationTaxPer100 = 500;
+      let batchSize = 500;
+
+      // Destiny Board Specs (T4-T8 only, max 500/500)
+      let specs = { 4: 100, 5: 100, 6: 100, 7: 100, 8: 100 };
+
+      try {
+        const savedSpecs = localStorage.getItem('ALBION_REFINING_SPECS_V2');
+        if (savedSpecs) {
+          const parsed = JSON.parse(savedSpecs);
+          if (parsed.specs) specs = { ...specs, ...parsed.specs };
+        }
+      } catch (e) {}
+
+      // Baseline offline price curves across tiers & enchantments
+      const BASE_RAW_CURVE = {
+        2: [12], 3: [25],
+        4: [50, 115, 290, 740, 2100],
+        5: [140, 350, 900, 2400, 7200],
+        6: [400, 1050, 2750, 7000, 21000],
+        7: [1200, 3100, 8200, 21500, 65000],
+        8: [3800, 9600, 25500, 68000, 205000],
+      };
+      const BASE_REFINED_CURVE = {
+        2: [18], 3: [42],
+        4: [140, 280, 680, 1750, 4800],
+        5: [460, 1100, 2850, 7400, 22000],
+        6: [1650, 4300, 11000, 28500, 86000],
+        7: [6500, 17000, 45000, 118000, 350000],
+        8: [24000, 61000, 162000, 425000, 1280000],
+      };
+
+      const priceStore = new Map();
+      R.RESOURCES.forEach(res => {
+        if (res.heartId) {
+          priceStore.set(res.heartId, { price: 40000, age: { text: 'Est.', category: 'moderate' } });
+        }
+        [2, 3, 4, 5, 6, 7, 8].forEach(t => {
+          const enchList = (t <= 3 || res.id === 'stone') ? [0] : [0, 1, 2, 3, 4];
+          enchList.forEach(e => {
+            const rawId = R.getItemId(res.rawPrefix, t, e);
+            const refId = R.getItemId(res.refinedPrefix, t, e);
+            priceStore.set(rawId, { price: BASE_RAW_CURVE[t][e], age: { text: 'Est.', category: 'moderate' } });
+            priceStore.set(refId, { price: BASE_REFINED_CURVE[t][e], age: { text: 'Est.', category: 'moderate' } });
+          });
+        });
+      });
+
+      // DOM References
+      const leftSidebar = document.getElementById('leftSidebar');
+      const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+      const premiumToggle = document.getElementById('premiumToggle');
+      const buyOrderToggle = document.getElementById('buyOrderToggle');
+      const orderTypeToggle = document.getElementById('orderTypeToggle');
+      const fetchAllPricesBtn = document.getElementById('fetchAllPricesBtn');
+      const resourceGroup = document.getElementById('resourceGroup');
+      const tierGroup = document.getElementById('tierGroup');
+      const enchantGroup = document.getElementById('enchantGroup');
+      const cityGroup = document.getElementById('cityGroup');
+      const focusToggle = document.getElementById('focusToggle');
+      const compoundToggle = document.getElementById('compoundToggle');
+      const heartToggle = document.getElementById('heartToggle');
+      const recursiveToggleBtn = document.getElementById('recursiveToggleBtn');
+      const focusPickerWrap = document.getElementById('focusPickerWrap');
+      const focusTiersBtn = document.getElementById('focusTiersBtn');
+      const focusTiersMenu = document.getElementById('focusTiersMenu');
+      const focusTiersGrid = document.getElementById('focusTiersGrid');
+      const focusTiersSummary = document.getElementById('focusTiersSummary');
+      const heartPickerWrap = document.getElementById('heartPickerWrap');
+      const heartTiersBtn = document.getElementById('heartTiersBtn');
+      const heartTiersMenu = document.getElementById('heartTiersMenu');
+      const heartTiersGrid = document.getElementById('heartTiersGrid');
+      const heartTiersSummary = document.getElementById('heartTiersSummary');
+      const recursiveChainSection = document.getElementById('recursiveChainSection');
+      const recursiveTableBody = document.getElementById('recursiveTableBody');
+      const dailyBonusSelect = document.getElementById('dailyBonusSelect');
+      const customRRRBox = document.getElementById('customRRRBox');
+      const customRRRInput = document.getElementById('customRRRInput');
+      const stationFeeInput = document.getElementById('stationFeeInput');
+      const batchSizeInput = document.getElementById('batchSizeInput');
+      const rawPriceInput = document.getElementById('rawPriceInput');
+      const heartPriceBox = document.getElementById('heartPriceBox');
+      const heartPriceInput = document.getElementById('heartPriceInput');
+      const prevPriceInput = document.getElementById('prevPriceInput');
+      const sellPriceInput = document.getElementById('sellPriceInput');
+      const prevTierBox = document.getElementById('prevTierBox');
+      const appliedFeeText = document.getElementById('appliedFeeText');
+      const priceMatrixBody = document.getElementById('priceMatrixBody');
+      const priceMatrixSidebar = document.getElementById('priceMatrixSidebar');
+      const togglePriceMatrixBtn = document.getElementById('togglePriceMatrixBtn');
+      const mainLayout = document.getElementById('mainLayout');
+      const specsModal = document.getElementById('specsModal');
+      const openSpecsBtn = document.getElementById('openSpecsBtn');
+
+      function formatTierEnchHtml(tier, enchant) {
+        return `<span class="tier-color-${tier}" style="font-weight: 800;">T${tier}</span><span class="ench-color-${enchant}" style="font-weight: 800;">.${enchant}</span>`;
+      }
+
+      function bindNonNegativeInput(el, minVal = 0) {
+        if (!el) return;
+        el.min = String(minVal);
+        el.addEventListener('keydown', (ev) => {
+          if (ev.key === '-' || ev.key === 'e' || ev.key === 'E' || ev.key === '+') {
+            ev.preventDefault();
+          }
+        });
+        el.addEventListener('blur', () => {
+          const parsed = parseFloat(el.value);
+          if (Number.isNaN(parsed) || parsed < minVal) {
+            el.value = minVal;
+          }
+        });
+      }
+
+      bindNonNegativeInput(customRRRInput, 0);
+      bindNonNegativeInput(stationFeeInput, 0);
+      bindNonNegativeInput(batchSizeInput, 1);
+      bindNonNegativeInput(rawPriceInput, 0);
+      bindNonNegativeInput(heartPriceInput, 0);
+      bindNonNegativeInput(prevPriceInput, 0);
+      bindNonNegativeInput(sellPriceInput, 0);
+
+      // Left Expandable Menu Toggle
+      sidebarToggleBtn.onclick = () => {
+        const expanded = leftSidebar.classList.toggle('expanded');
+        document.body.classList.toggle('sidebar-expanded', expanded);
+        sidebarToggleBtn.innerText = expanded ? '✕' : '☰';
+        saveSession();
+      };
+
+      const SESSION_STORAGE_KEY = 'ALBION_REFINING_SESSION_V1';
+
+      function syncControlsUI() {
+        premiumToggle.className = 'btn-toggle' + (hasPremium ? ' active' : '');
+        premiumToggle.innerHTML = `👑 Premium: <span style="color: ${hasPremium ? 'var(--gold)' : 'var(--danger)'};">${hasPremium ? 'ON (4%)' : 'OFF (8%)'}</span>`;
+
+        buyOrderToggle.className = 'btn-toggle' + (buyOrderType === 'buy_order' ? ' active' : '');
+        buyOrderToggle.innerHTML = `🛒 Buy: <span style="color: ${buyOrderType === 'buy_order' ? 'var(--accent)' : 'var(--success)'};">${buyOrderType === 'buy_order' ? 'Buy Order (+2.5%)' : 'Instant Buy (0%)'}</span>`;
+
+        orderTypeToggle.className = 'btn-toggle' + (orderType === 'sell_order' ? ' active' : '');
+        orderTypeToggle.innerHTML = `📝 Order: <span style="color: var(--accent);">${orderType === 'sell_order' ? 'Sell Order (+2.5%)' : 'Instant Sell'}</span>`;
+
+        compoundToggle.className = 'btn-toggle' + (compound ? ' active' : '');
+        compoundToggle.innerHTML = `🔄 Compounding: <span style="color: ${compound ? 'var(--success)' : 'var(--text-muted)'};">${compound ? 'ON' : 'OFF'}</span>`;
+
+        recursiveToggleBtn.className = 'btn-toggle' + (isRecursive ? ' active' : '');
+        recursiveToggleBtn.innerHTML = `🔗 Recursive: <span style="color: ${isRecursive ? 'var(--purple)' : 'var(--text-muted)'};">${isRecursive ? 'ON' : 'OFF'}</span>`;
+        recursiveChainSection.style.display = isRecursive ? 'block' : 'none';
+
+        dailyBonusSelect.value = String(dailyBonusPercent);
+        customRRRInput.value = customRRR;
+        stationFeeInput.value = stationTaxPer100;
+        batchSizeInput.value = batchSize;
+      }
+
+      function saveSession() {
+        try {
+          const savedPrices = {};
+          priceStore.forEach((val, key) => {
+            if (val && val.age && val.age.text !== 'Est.') {
+              savedPrices[key] = val;
+            }
+          });
+          const payload = {
+            resourceId: selectedResource.id,
+            tier: selectedTier,
+            enchant: selectedEnchant,
+            cityId: selectedCity.id,
+            useFocus,
+            compound,
+            hasPremium,
+            buyOrderType,
+            orderType,
+            useHeart,
+            isRecursive,
+            focusTiers,
+            focusTiersTrackTarget,
+            heartTiers,
+            heartTiersTrackTarget,
+            dailyBonusPercent,
+            customRRR,
+            stationTaxPer100,
+            batchSize,
+            sidebarExpanded: leftSidebar.classList.contains('expanded'),
+            priceMatrixVisible: mainLayout.classList.contains('has-sidebar'),
+            prices: savedPrices,
+          };
+          localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload));
+        } catch (e) {}
+      }
+
+      function loadSession() {
+        try {
+          const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+          if (!raw) return;
+          const s = JSON.parse(raw);
+          if (!s || typeof s !== 'object') return;
+
+          if (s.resourceId) {
+            const foundRes = R.RESOURCES.find(r => r.id === s.resourceId);
+            if (foundRes) selectedResource = foundRes;
+          }
+          if ([2, 3, 4, 5, 6, 7, 8].includes(s.tier)) selectedTier = s.tier;
+          if ([0, 1, 2, 3, 4].includes(s.enchant)) selectedEnchant = s.enchant;
+          if (s.cityId) {
+            const foundCity = R.CITIES.find(c => c.id === s.cityId);
+            if (foundCity) selectedCity = foundCity;
+          }
+          if (typeof s.useFocus === 'boolean') useFocus = s.useFocus;
+          if (typeof s.compound === 'boolean') compound = s.compound;
+          if (typeof s.hasPremium === 'boolean') hasPremium = s.hasPremium;
+          if (s.buyOrderType === 'buy_order' || s.buyOrderType === 'instant_buy') buyOrderType = s.buyOrderType;
+          if (s.orderType === 'sell_order' || s.orderType === 'instant_sell') orderType = s.orderType;
+          if (typeof s.useHeart === 'boolean') useHeart = s.useHeart;
+          if (typeof s.isRecursive === 'boolean') isRecursive = s.isRecursive;
+          if (s.focusTiers && typeof s.focusTiers === 'object') focusTiers = { ...focusTiers, ...s.focusTiers };
+          if (typeof s.focusTiersTrackTarget === 'boolean') focusTiersTrackTarget = s.focusTiersTrackTarget;
+          if (s.heartTiers && typeof s.heartTiers === 'object') heartTiers = { ...heartTiers, ...s.heartTiers };
+          if (typeof s.heartTiersTrackTarget === 'boolean') heartTiersTrackTarget = s.heartTiersTrackTarget;
+          if ([0, 10, 20].includes(Number(s.dailyBonusPercent))) dailyBonusPercent = Number(s.dailyBonusPercent);
+          if (typeof s.customRRR === 'number' && !Number.isNaN(s.customRRR)) customRRR = Math.min(Math.max(s.customRRR, 0), 90);
+          if (typeof s.stationTaxPer100 === 'number' && !Number.isNaN(s.stationTaxPer100)) stationTaxPer100 = Math.max(0, Math.round(s.stationTaxPer100));
+          if (typeof s.batchSize === 'number' && !Number.isNaN(s.batchSize)) batchSize = Math.max(1, Math.round(s.batchSize));
+
+          if (typeof s.sidebarExpanded === 'boolean') {
+            leftSidebar.classList.toggle('expanded', s.sidebarExpanded);
+            document.body.classList.toggle('sidebar-expanded', s.sidebarExpanded);
+            sidebarToggleBtn.innerText = s.sidebarExpanded ? '✕' : '☰';
+          }
+          if (typeof s.priceMatrixVisible === 'boolean') {
+            mainLayout.classList.toggle('has-sidebar', s.priceMatrixVisible);
+            priceMatrixSidebar.style.display = s.priceMatrixVisible ? 'block' : 'none';
+            togglePriceMatrixBtn.className = 'btn-toggle' + (s.priceMatrixVisible ? ' active' : '');
+          }
+          if (s.prices && typeof s.prices === 'object') {
+            Object.entries(s.prices).forEach(([id, entry]) => {
+              if (entry && typeof entry.price === 'number') {
+                priceStore.set(id, {
+                  price: Math.max(0, Math.round(entry.price)),
+                  age: entry.age && entry.age.text ? entry.age : { text: 'Saved', category: 'moderate' },
+                });
+              }
+            });
+          }
+        } catch (e) {}
+      }
+
+      function setItemPrice(id, price, age = { text: 'Manual', category: 'stale' }) {
+        priceStore.set(id, { price: Math.max(0, parseInt(price) || 0), age });
+      }
+
+      // Refresh a single item's price from Europe AODP when clicking its "last updated" badge
+      async function refreshSingleItemPrice(itemId, badgeEl) {
+        if (!itemId) return;
+        const originalText = badgeEl.innerText;
+        badgeEl.innerText = '⏳...';
+        badgeEl.disabled = true;
+
+        try {
+          const res = await API.fetchPrices({
+            server: SERVER,
+            itemIds: [itemId],
+            locations: selectedCity.id !== 'Custom' && selectedCity.id !== 'Island' ? selectedCity.name : '',
+            forceRefresh: true,
+          });
+
+          if (res.data && res.data.length > 0) {
+            let bestEntry = null;
+            res.data.forEach(entry => {
+              const p = entry.sell_price_min > 0 ? entry.sell_price_min : entry.buy_price_max;
+              if (p > 0 && (!bestEntry || p < (bestEntry.sell_price_min || bestEntry.buy_price_max))) {
+                bestEntry = entry;
+              }
+            });
+            if (bestEntry) {
+              const p = bestEntry.sell_price_min > 0 ? bestEntry.sell_price_min : bestEntry.buy_price_max;
+              const age = API.formatPriceAge(bestEntry.sell_price_min_date);
+              setItemPrice(itemId, p, age);
+            } else {
+              badgeEl.innerText = 'No data';
+              setTimeout(() => renderPriceMatrix(), 1200);
+            }
+          } else {
+            badgeEl.innerText = 'No data';
+            setTimeout(() => renderPriceMatrix(), 1200);
+          }
+        } catch (err) {
+          console.warn('Single price refresh error:', err);
+          badgeEl.innerText = originalText;
+        } finally {
+          badgeEl.disabled = false;
+          syncCurrentItemPrices();
+          render();
+          renderPriceMatrix();
+        }
+      }
+
+      function initButtons() {
+        // Resources
+        resourceGroup.innerHTML = '';
+        R.RESOURCES.forEach(res => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn-item' + (res.id === selectedResource.id ? ' active' : '');
+          btn.style.color = res.color;
+          btn.innerHTML = `<div>${res.refinedName}</div><span class="sub" style="color: var(--text-muted);">${res.bonusCity}</span>`;
+          btn.onclick = () => {
+            selectedResource = res;
+            const bCity = R.CITIES.find(c => c.bonus === res.id);
+            if (bCity) selectedCity = bCity;
+            syncCurrentItemPrices();
+            render();
+            renderPriceMatrix();
+          };
+          resourceGroup.appendChild(btn);
+        });
+
+        // Tiers (T2-T3 light green, T4 blue, T5 red, T6 orange, T7 yellow, T8 white)
+        tierGroup.innerHTML = '';
+        [2, 3, 4, 5, 6, 7, 8].forEach(t => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `btn-item tier-color-${t}` + (t === selectedTier ? ' active' : '');
+          btn.innerText = `T${t}`;
+          btn.onclick = () => {
+            selectedTier = t;
+            syncCurrentItemPrices();
+            render();
+            renderPriceMatrix();
+          };
+          tierGroup.appendChild(btn);
+        });
+
+        // Enchants
+        enchantGroup.innerHTML = '';
+        [0, 1, 2, 3, 4].forEach(e => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `btn-item ench-color-${e}` + (e === selectedEnchant ? ' active' : '');
+          btn.innerText = `.${e}`;
+          btn.onclick = () => {
+            selectedEnchant = e;
+            syncCurrentItemPrices();
+            render();
+            renderPriceMatrix();
+          };
+          enchantGroup.appendChild(btn);
+        });
+
+        // Cities
+        cityGroup.innerHTML = '';
+        R.CITIES.forEach(c => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          const isBonus = c.bonus === selectedResource.id;
+          btn.className = 'btn-item' + (c.id === selectedCity.id ? ' active' : '');
+          btn.style.color = isBonus ? 'var(--gold)' : 'var(--text)';
+          btn.innerHTML = `<div>${c.name}</div>${isBonus ? '<span class="sub" style="color: var(--success);">★ BONUS</span>' : ''}`;
+          btn.onclick = () => { selectedCity = c; render(); renderPriceMatrix(); };
+          cityGroup.appendChild(btn);
+        });
+      }
+
+      function syncCurrentItemPrices() {
+        const rawId = R.getItemId(selectedResource.rawPrefix, selectedTier, selectedEnchant);
+        const refinedId = R.getItemId(selectedResource.refinedPrefix, selectedTier, selectedEnchant);
+        const prevEnch = R.getPrevTierEnchantment(selectedTier, selectedEnchant);
+        const prevId = selectedTier > 2 ? R.getItemId(selectedResource.refinedPrefix, selectedTier - 1, prevEnch) : null;
+
+        if (priceStore.has(rawId)) {
+          const e = priceStore.get(rawId);
+          rawPriceInput.value = e.price;
+          const b = document.getElementById('rawAgeBadge');
+          b.innerText = e.age.text;
+          b.className = 'price-age age-' + e.age.category;
+          b.onclick = () => refreshSingleItemPrice(rawId, b);
+        }
+        if (priceStore.has(refinedId)) {
+          const e = priceStore.get(refinedId);
+          sellPriceInput.value = e.price;
+          const b = document.getElementById('sellAgeBadge');
+          b.innerText = e.age.text;
+          b.className = 'price-age age-' + e.age.category;
+          b.onclick = () => refreshSingleItemPrice(refinedId, b);
+        }
+        if (prevId && priceStore.has(prevId)) {
+          const e = priceStore.get(prevId);
+          prevPriceInput.value = e.price;
+          const b = document.getElementById('prevAgeBadge');
+          b.innerText = e.age.text;
+          b.className = 'price-age age-' + e.age.category;
+          b.onclick = () => refreshSingleItemPrice(prevId, b);
+        }
+        if (selectedResource.heartId && priceStore.has(selectedResource.heartId)) {
+          const e = priceStore.get(selectedResource.heartId);
+          heartPriceInput.value = e.price;
+          const b = document.getElementById('heartAgeBadge');
+          b.innerText = e.age.text;
+          b.className = 'price-age age-' + e.age.category;
+          b.onclick = () => refreshSingleItemPrice(selectedResource.heartId, b);
+        }
+      }
+
+      // Top Island Toggles
+      premiumToggle.onclick = () => {
+        hasPremium = !hasPremium;
+        premiumToggle.className = 'btn-toggle' + (hasPremium ? ' active' : '');
+        premiumToggle.innerHTML = `👑 Premium: <span style="color: ${hasPremium ? 'var(--gold)' : 'var(--danger)'};">${hasPremium ? 'ON (4%)' : 'OFF (8%)'}</span>`;
+        render();
+      };
+
+      buyOrderToggle.onclick = () => {
+        buyOrderType = buyOrderType === 'buy_order' ? 'instant_buy' : 'buy_order';
+        buyOrderToggle.className = 'btn-toggle' + (buyOrderType === 'buy_order' ? ' active' : '');
+        buyOrderToggle.innerHTML = `🛒 Buy: <span style="color: ${buyOrderType === 'buy_order' ? 'var(--accent)' : 'var(--success)'};">${buyOrderType === 'buy_order' ? 'Buy Order (+2.5%)' : 'Instant Buy (0%)'}</span>`;
+        render();
+      };
+
+      orderTypeToggle.onclick = () => {
+        orderType = orderType === 'sell_order' ? 'instant_sell' : 'sell_order';
+        orderTypeToggle.className = 'btn-toggle' + (orderType === 'sell_order' ? ' active' : '');
+        orderTypeToggle.innerHTML = `📝 Order: <span style="color: var(--accent);">${orderType === 'sell_order' ? 'Sell Order (+2.5%)' : 'Instant Sell'}</span>`;
+        render();
+      };
+
+      function anyTierActive(map) {
+        return [3, 4, 5, 6, 7, 8].some(t => Boolean(map[t]));
+      }
+
+      function applyTargetOnly(map) {
+        [3, 4, 5, 6, 7, 8].forEach(t => { map[t] = (selectedTier >= 3 && t === selectedTier); });
+      }
+
+      function formatTierSummaryHtml(map) {
+        const active = [3, 4, 5, 6, 7, 8].filter(t => map[t]);
+        if (active.length === 0) return '<span style="color: var(--text-muted);">None</span>';
+        if (active.length === 6) return '<span style="color: var(--success);">All</span>';
+        return active.map(t => `<span class="tier-color-${t}" style="font-weight:800;">T${t}</span>`).join(', ');
+      }
+
+      function renderTierPickers() {
+        if (focusTiersTrackTarget) applyTargetOnly(focusTiers);
+        if (heartTiersTrackTarget) applyTargetOnly(heartTiers);
+
+        focusTiersSummary.innerHTML = formatTierSummaryHtml(focusTiers);
+        heartTiersSummary.innerHTML = formatTierSummaryHtml(heartTiers);
+
+        // Focus tier chips
+        focusTiersGrid.innerHTML = '';
+        [3, 4, 5, 6, 7, 8].forEach(t => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `tier-chip tier-color-${t}` + (focusTiers[t] ? ' active' : '') + (t > selectedTier ? ' dimmed' : '');
+          btn.innerText = `T${t}`;
+          if (t > selectedTier) btn.title = 'Above current target tier';
+          btn.onclick = (ev) => {
+            ev.stopPropagation();
+            focusTiersTrackTarget = false;
+            focusTiers[t] = !focusTiers[t];
+            if (!anyTierActive(focusTiers)) {
+              useFocus = false;
+            } else if (focusTiers[t]) {
+              useFocus = true;
+            }
+            render();
+          };
+          focusTiersGrid.appendChild(btn);
+        });
+
+        // Heart tier chips
+        heartTiersGrid.innerHTML = '';
+        const heartAllDisabled = selectedEnchant === 4 || selectedTier < 3;
+        [3, 4, 5, 6, 7, 8].forEach(t => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `tier-chip tier-color-${t}` + (heartTiers[t] ? ' active' : '') + (t > selectedTier ? ' dimmed' : '');
+          btn.innerText = `T${t}`;
+          btn.disabled = heartAllDisabled;
+          if (heartAllDisabled) btn.title = 'Unavailable on .4 or T2';
+          else if (t > selectedTier) btn.title = 'Above current target tier';
+          btn.onclick = (ev) => {
+            ev.stopPropagation();
+            if (heartAllDisabled) return;
+            heartTiersTrackTarget = false;
+            heartTiers[t] = !heartTiers[t];
+            if (!anyTierActive(heartTiers)) {
+              useHeart = false;
+            } else if (heartTiers[t]) {
+              useHeart = true;
+            }
+            render();
+          };
+          heartTiersGrid.appendChild(btn);
+        });
+      }
+
+      focusTiersBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        heartTiersMenu.classList.remove('open');
+        focusTiersMenu.classList.toggle('open');
+      };
+
+      heartTiersBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        focusTiersMenu.classList.remove('open');
+        heartTiersMenu.classList.toggle('open');
+      };
+
+      document.addEventListener('click', (ev) => {
+        if (!focusPickerWrap.contains(ev.target)) focusTiersMenu.classList.remove('open');
+        if (!heartPickerWrap.contains(ev.target)) heartTiersMenu.classList.remove('open');
+      });
+
+      document.querySelectorAll('[data-focus-preset]').forEach(btn => {
+        btn.onclick = (ev) => {
+          ev.stopPropagation();
+          const p = btn.dataset.focusPreset;
+          if (p === 'target') {
+            focusTiersTrackTarget = true;
+            applyTargetOnly(focusTiers);
+            useFocus = selectedTier >= 3;
+          } else if (p === 'all') {
+            focusTiersTrackTarget = false;
+            [3, 4, 5, 6, 7, 8].forEach(t => { focusTiers[t] = true; });
+            useFocus = true;
+          } else {
+            focusTiersTrackTarget = false;
+            [3, 4, 5, 6, 7, 8].forEach(t => { focusTiers[t] = false; });
+            useFocus = false;
+          }
+          render();
+        };
+      });
+
+      document.querySelectorAll('[data-heart-preset]').forEach(btn => {
+        btn.onclick = (ev) => {
+          ev.stopPropagation();
+          const p = btn.dataset.heartPreset;
+          if (p === 'target') {
+            heartTiersTrackTarget = true;
+            applyTargetOnly(heartTiers);
+            useHeart = (selectedEnchant !== 4 && selectedTier >= 3);
+          } else if (p === 'all') {
+            heartTiersTrackTarget = false;
+            [3, 4, 5, 6, 7, 8].forEach(t => { heartTiers[t] = true; });
+            useHeart = (selectedEnchant !== 4 && selectedTier >= 3);
+          } else {
+            heartTiersTrackTarget = false;
+            [3, 4, 5, 6, 7, 8].forEach(t => { heartTiers[t] = false; });
+            useHeart = false;
+          }
+          render();
+        };
+      });
+
+      focusToggle.onclick = () => {
+        if (!anyTierActive(focusTiers)) return;
+        useFocus = !useFocus;
+        render();
+      };
+
+      compoundToggle.onclick = () => {
+        compound = !compound;
+        compoundToggle.className = 'btn-toggle' + (compound ? ' active' : '');
+        compoundToggle.innerHTML = `🔄 Compounding: <span style="color: ${compound ? 'var(--success)' : 'var(--text-muted)'};">${compound ? 'ON' : 'OFF'}</span>`;
+        render();
+      };
+
+      heartToggle.onclick = () => {
+        if (selectedEnchant === 4 || selectedTier < 3 || !anyTierActive(heartTiers)) return;
+        useHeart = !useHeart;
+        render();
+      };
+
+      recursiveToggleBtn.onclick = () => {
+        isRecursive = !isRecursive;
+        recursiveToggleBtn.className = 'btn-toggle' + (isRecursive ? ' active' : '');
+        recursiveToggleBtn.innerHTML = `🔗 Recursive: <span style="color: ${isRecursive ? 'var(--purple)' : 'var(--text-muted)'};">${isRecursive ? 'ON' : 'OFF'}</span>`;
+        recursiveChainSection.style.display = isRecursive ? 'block' : 'none';
+        render();
+      };
+
+      dailyBonusSelect.onchange = (e) => {
+        dailyBonusPercent = parseInt(e.target.value) || 0;
+        render();
+      };
+
+      customRRRInput.oninput = (e) => {
+        const clamped = Math.min(Math.max(parseFloat(e.target.value) || 0, 0), 90);
+        if (parseFloat(e.target.value) < 0) e.target.value = 0;
+        customRRR = clamped;
+        render();
+      };
+
+      stationFeeInput.oninput = (e) => {
+        if (parseFloat(e.target.value) < 0) e.target.value = 0;
+        stationTaxPer100 = Math.max(0, parseInt(e.target.value) || 0);
+        render();
+      };
+      batchSizeInput.oninput = (e) => {
+        if (parseFloat(e.target.value) < 0) e.target.value = 1;
+        batchSize = Math.max(1, parseInt(e.target.value) || 1);
+        render();
+      };
+
+      rawPriceInput.oninput = (e) => {
+        if (parseFloat(e.target.value) < 0) e.target.value = 0;
+        const id = R.getItemId(selectedResource.rawPrefix, selectedTier, selectedEnchant);
+        setItemPrice(id, e.target.value);
+        render();
+        renderPriceMatrix();
+      };
+
+      heartPriceInput.oninput = (e) => {
+        if (parseFloat(e.target.value) < 0) e.target.value = 0;
+        if (selectedResource.heartId) {
+          setItemPrice(selectedResource.heartId, e.target.value);
+          render();
+          renderPriceMatrix();
+        }
+      };
+
+      prevPriceInput.oninput = (e) => {
+        if (parseFloat(e.target.value) < 0) e.target.value = 0;
+        const prevEnch = R.getPrevTierEnchantment(selectedTier, selectedEnchant);
+        const prevId = selectedTier > 2 ? R.getItemId(selectedResource.refinedPrefix, selectedTier - 1, prevEnch) : null;
+        if (prevId) {
+          setItemPrice(prevId, e.target.value);
+          render();
+          renderPriceMatrix();
+        }
+      };
+
+      sellPriceInput.oninput = (e) => {
+        if (parseFloat(e.target.value) < 0) e.target.value = 0;
+        const id = R.getItemId(selectedResource.refinedPrefix, selectedTier, selectedEnchant);
+        setItemPrice(id, e.target.value);
+        render();
+        renderPriceMatrix();
+      };
+
+      window.setBatch = (b) => { batchSize = Math.max(1, b); batchSizeInput.value = batchSize; render(); };
+      window.fitFocusPool = (fp) => {
+        if (selectedTier <= 2) return;
+
+        if (!anyTierActive(focusTiers) || (!isRecursive && !focusTiers[selectedTier])) {
+          focusTiersTrackTarget = true;
+          applyTargetOnly(focusTiers);
+        }
+        focusToggle.disabled = false;
+        if (!useFocus) {
+          useFocus = true;
+        }
+
+        const rrrFocus = R.calculateRRR({
+          cityId: selectedCity.id,
+          resourceId: selectedResource.id,
+          useFocus: true,
+          dailyBonusPercent,
+          customRRR,
+        });
+        const rrrNoFocus = R.calculateRRR({
+          cityId: selectedCity.id,
+          resourceId: selectedResource.id,
+          useFocus: false,
+          dailyBonusPercent,
+          customRRR,
+        });
+
+        const bestBatch = R.fitBatchToFocus({
+          focusBudget: fp,
+          tier: selectedTier,
+          enchantment: selectedEnchant,
+          rrr: rrrFocus,
+          rrrNoFocus,
+          compound,
+          isRecursive,
+          focusTiers,
+          specs,
+          useHeart,
+          heartTiers,
+        });
+        window.setBatch(bestBatch);
+      };
+
+      // Toggle Price Matrix Sidebar
+      togglePriceMatrixBtn.onclick = () => {
+        const isOpen = mainLayout.classList.toggle('has-sidebar');
+        priceMatrixSidebar.style.display = isOpen ? 'block' : 'none';
+        togglePriceMatrixBtn.className = 'btn-toggle' + (isOpen ? ' active' : '');
+        saveSession();
+      };
+
+      // Destiny Board Specs Modal
+      window.openSpecsModal = () => {
+        [4, 5, 6, 7, 8].forEach(t => {
+          document.getElementById(`modalSpec${t}Range`).value = specs[t];
+          document.getElementById(`modalSpec${t}Val`).innerText = specs[t];
+        });
+        updateModalSpecTotal();
+        specsModal.classList.add('open');
+      };
+
+      window.closeSpecsModal = () => {
+        [4, 5, 6, 7, 8].forEach(t => {
+          specs[t] = parseInt(document.getElementById(`modalSpec${t}Range`).value);
+        });
+        try {
+          localStorage.setItem('ALBION_REFINING_SPECS_V2', JSON.stringify({ specs }));
+        } catch (e) {}
+        specsModal.classList.remove('open');
+        render();
+      };
+
+      function updateModalSpecTotal() {
+        let total = 0;
+        [4, 5, 6, 7, 8].forEach(t => {
+          total += parseInt(document.getElementById(`modalSpec${t}Range`).value);
+        });
+        document.getElementById('modalTotalSpecVal').innerText = `${total} / 500`;
+      }
+
+      [4, 5, 6, 7, 8].forEach(t => {
+        document.getElementById(`modalSpec${t}Range`).oninput = (e) => {
+          document.getElementById(`modalSpec${t}Val`).innerText = e.target.value;
+          updateModalSpecTotal();
+        };
+      });
+
+      openSpecsBtn.onclick = window.openSpecsModal;
+
+      // Bulk Fetch ALL Resource Prices (Europe Only)
+      fetchAllPricesBtn.onclick = async () => {
+        fetchAllPricesBtn.disabled = true;
+        fetchAllPricesBtn.innerText = '⏳ Querying...';
+
+        const allIds = [
+          R.getItemId(selectedResource.rawPrefix, 2, 0),
+          R.getItemId(selectedResource.refinedPrefix, 2, 0),
+          R.getItemId(selectedResource.rawPrefix, 3, 0),
+          R.getItemId(selectedResource.refinedPrefix, 3, 0),
+        ];
+
+        [4, 5, 6, 7, 8].forEach(t => {
+          [0, 1, 2, 3, 4].forEach(e => {
+            if (selectedResource.id === 'stone' && e > 0) return;
+            allIds.push(R.getItemId(selectedResource.rawPrefix, t, e));
+            allIds.push(R.getItemId(selectedResource.refinedPrefix, t, e));
+          });
+        });
+        if (selectedResource.heartId) {
+          allIds.push(selectedResource.heartId);
+        }
+
+        try {
+          const res = await API.fetchPrices({
+            server: SERVER,
+            itemIds: allIds,
+            locations: selectedCity.id !== 'Custom' && selectedCity.id !== 'Island' ? selectedCity.name : '',
+            forceRefresh: true,
+          });
+
+          let updated = 0;
+          if (res.data && res.data.length > 0) {
+            res.data.forEach(item => {
+              const age = API.formatPriceAge(item.sell_price_min_date);
+              const p = item.sell_price_min > 0 ? item.sell_price_min : item.buy_price_max;
+              if (p > 0) {
+                setItemPrice(item.item_id, p, age);
+                updated++;
+              }
+            });
+          }
+          syncCurrentItemPrices();
+          render();
+          renderPriceMatrix();
+          fetchAllPricesBtn.innerText = `✓ ${updated} OK`;
+          setTimeout(() => { fetchAllPricesBtn.innerText = '📥 Fetch All'; fetchAllPricesBtn.disabled = false; }, 2500);
+        } catch (e) {
+          console.warn('API Error:', e);
+          fetchAllPricesBtn.innerText = '⚠ Error';
+          setTimeout(() => { fetchAllPricesBtn.innerText = '📥 Fetch All'; fetchAllPricesBtn.disabled = false; }, 2500);
+        }
+      };
+
+      // Reworked Price Matrix Side Window with Faction Heart + Tier Icons & Clickable Last-Updated Badges
+      function renderPriceMatrix() {
+        document.getElementById('sideResourceName').innerText = `All ${selectedResource.name} & Heart (${selectedCity.name} · EU)`;
+        priceMatrixBody.innerHTML = '';
+
+        // Faction Heart Row at the top of the Price Matrix
+        if (selectedResource.heartId) {
+          const hData = priceStore.get(selectedResource.heartId) || { price: 40000, age: { text: '-', category: 'stale' } };
+          const hTr = document.createElement('tr');
+          hTr.style.background = 'rgba(250, 204, 21, 0.06)';
+          hTr.style.borderBottom = '1.5px solid var(--border)';
+          hTr.innerHTML = `
+            <td style="color: var(--gold); font-weight: 800; font-size: 13px; white-space: nowrap;">
+              🫀 Heart
+            </td>
+            <td>
+              <div class="matrix-cell">
+                <img class="matrix-icon" src="${R.getRenderUrl(selectedResource.heartId, 1, 48)}" alt="${selectedResource.heartName}">
+                <div class="matrix-input-col">
+                  <input type="number" min="0" class="price-matrix-input" value="${hData.price}" style="color: var(--gold);">
+                  <button type="button" class="price-age age-${hData.age.category}" title="Click to refresh Faction Heart price from Europe AODP">${hData.age.text}</button>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div style="font-size: 12px; font-weight: 700; color: var(--gold);">${selectedResource.heartName}</div>
+              <div style="font-size: 10px; color: var(--text-muted);">-1 Raw / Craft (w/ RRR)</div>
+            </td>
+          `;
+          const hInput = hTr.querySelector('input');
+          bindNonNegativeInput(hInput, 0);
+          hInput.onchange = (e) => {
+            if (parseFloat(e.target.value) < 0) e.target.value = 0;
+            setItemPrice(selectedResource.heartId, e.target.value);
+            syncCurrentItemPrices();
+            render();
+          };
+          const hAgeBtn = hTr.querySelector('button.price-age');
+          hAgeBtn.onclick = () => refreshSingleItemPrice(selectedResource.heartId, hAgeBtn);
+          priceMatrixBody.appendChild(hTr);
+        }
+
+        const itemsList = [{ tier: 2, enchant: 0 }, { tier: 3, enchant: 0 }];
+        [4, 5, 6, 7, 8].forEach(t => {
+          [0, 1, 2, 3, 4].forEach(e => {
+            if (selectedResource.id === 'stone' && e > 0) return;
+            itemsList.push({ tier: t, enchant: e });
+          });
+        });
+
+        itemsList.forEach(({ tier, enchant }) => {
+          const rawId = R.getItemId(selectedResource.rawPrefix, tier, enchant);
+          const refinedId = R.getItemId(selectedResource.refinedPrefix, tier, enchant);
+
+          const rawData = priceStore.get(rawId) || { price: 0, age: { text: '-', category: 'stale' } };
+          const refinedData = priceStore.get(refinedId) || { price: 0, age: { text: '-', category: 'stale' } };
+          const isSelected = tier === selectedTier && enchant === selectedEnchant;
+
+          const tr = document.createElement('tr');
+          if (isSelected) tr.style.background = 'var(--accent-active-bg)';
+
+          tr.innerHTML = `
+            <td class="matrix-tier-cell" title="Click to select T${tier}.${enchant}">
+              ${formatTierEnchHtml(tier, enchant)}
+            </td>
+            <td>
+              <div class="matrix-cell">
+                <img class="matrix-icon" src="${R.getRenderUrl(rawId, 1, 48)}" alt="T${tier}.${enchant} Raw">
+                <div class="matrix-input-col">
+                  <input type="number" min="0" class="price-matrix-input" value="${rawData.price}">
+                  <button type="button" class="price-age age-${rawData.age.category}" title="Click to refresh price from Europe AODP">${rawData.age.text}</button>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="matrix-cell">
+                <img class="matrix-icon" src="${R.getRenderUrl(refinedId, 1, 48)}" alt="T${tier}.${enchant} Refined">
+                <div class="matrix-input-col">
+                  <input type="number" min="0" class="price-matrix-input" value="${refinedData.price}" style="color: var(--success);">
+                  <button type="button" class="price-age age-${refinedData.age.category}" title="Click to refresh price from Europe AODP">${refinedData.age.text}</button>
+                </div>
+              </div>
+            </td>
+          `;
+
+          const inputs = tr.querySelectorAll('input');
+          bindNonNegativeInput(inputs[0], 0);
+          bindNonNegativeInput(inputs[1], 0);
+          inputs[0].onchange = (e) => {
+            if (parseFloat(e.target.value) < 0) e.target.value = 0;
+            setItemPrice(rawId, e.target.value);
+            syncCurrentItemPrices();
+            render();
+          };
+          inputs[1].onchange = (e) => {
+            if (parseFloat(e.target.value) < 0) e.target.value = 0;
+            setItemPrice(refinedId, e.target.value);
+            syncCurrentItemPrices();
+            render();
+          };
+
+          const ageBtns = tr.querySelectorAll('button.price-age');
+          ageBtns[0].onclick = () => refreshSingleItemPrice(rawId, ageBtns[0]);
+          ageBtns[1].onclick = () => refreshSingleItemPrice(refinedId, ageBtns[1]);
+
+          tr.querySelector('.matrix-tier-cell').onclick = () => {
+            selectedTier = tier;
+            selectedEnchant = enchant;
+            syncCurrentItemPrices();
+            render();
+            renderPriceMatrix();
+          };
+
+          priceMatrixBody.appendChild(tr);
+        });
+      }
+
+      // Main Render
+      function render() {
+        initButtons();
+
+        // Specs Summary (Max 500/500)
+        const totalSpecPoints = specs[4] + specs[5] + specs[6] + specs[7] + specs[8];
+        document.getElementById('specSummaryBadge').innerText = `${totalSpecPoints}/500`;
+        const quickTierLbl = document.getElementById('quickSpecTierLabel');
+        quickTierLbl.innerText = `T${selectedTier >= 4 ? selectedTier : '3'}`;
+        quickTierLbl.className = `tier-color-${selectedTier >= 4 ? selectedTier : 3}`;
+        document.getElementById('quickSpecVal').innerText = selectedTier >= 4 ? specs[selectedTier] : 'N/A';
+        document.getElementById('quickTotalSpecVal').innerText = `${totalSpecPoints}/500`;
+
+        // Enchantments visibility
+        const enchSection = document.getElementById('enchantmentSection');
+        if (selectedResource.id === 'stone' || selectedTier < 4) {
+          enchSection.style.display = 'none';
+          selectedEnchant = 0;
+        } else {
+          enchSection.style.display = 'block';
+        }
+
+        // Lower tier visibility for T2
+        if (selectedTier === 2) {
+          prevTierBox.style.opacity = '0.35';
+          prevPriceInput.disabled = true;
+          document.getElementById('rowPrevTierWrapper').style.display = 'none';
+        } else {
+          prevTierBox.style.opacity = '1';
+          prevPriceInput.disabled = false;
+          document.getElementById('rowPrevTierWrapper').style.display = 'table-row';
+        }
+
+        // Custom RRR visibility
+        customRRRBox.style.display = selectedCity.id === 'Custom' ? 'block' : 'none';
+
+        // Sync Individual Focus & Heart Tier Pickers
+        renderTierPickers();
+
+        // Sync Focus Lock & Active State
+        const anyFocusSelected = anyTierActive(focusTiers);
+        if (!anyFocusSelected) {
+          useFocus = false;
+          focusToggle.disabled = true;
+        } else {
+          focusToggle.disabled = false;
+        }
+        const directUseFocus = useFocus && selectedTier >= 3 && Boolean(focusTiers[selectedTier]);
+        const chainFocusActive = isRecursive && selectedTier > 2
+          ? [3, 4, 5, 6, 7, 8].some(t => t <= selectedTier && focusTiers[t]) && useFocus
+          : directUseFocus;
+        const focusBtnOn = isRecursive ? chainFocusActive : directUseFocus;
+        focusToggle.className = 'btn-toggle' + (focusBtnOn ? ' active' : '');
+        focusToggle.innerHTML = `⚡ Focus: <span style="color: ${focusBtnOn ? 'var(--cyan)' : 'var(--text-muted)'};">${focusBtnOn ? 'ON' : 'OFF'}</span>`;
+
+        // Sync Heart Refining Eligibility (disabled on .4, T2, or when 0 heart tiers checked)
+        const tierData = R.TIERS[selectedTier];
+        const heartEligible = selectedEnchant !== 4 && tierData.rawReq >= 2;
+        const anyHeartSelected = anyTierActive(heartTiers);
+        heartToggle.disabled = !heartEligible || !anyHeartSelected;
+        const directUseHeart = useHeart && heartEligible && Boolean(heartTiers[selectedTier]);
+        const chainUseHeart = isRecursive && selectedTier > 2
+          ? useHeart && selectedEnchant !== 4 && [3, 4, 5, 6, 7, 8].some(t => t <= selectedTier && heartTiers[t])
+          : directUseHeart;
+        const heartBtnOn = isRecursive ? chainUseHeart : directUseHeart;
+        heartToggle.className = 'btn-toggle' + (heartBtnOn ? ' active' : '');
+        document.getElementById('heartBtnName').innerText = selectedResource.heartName;
+        const heartStatusEl = document.getElementById('heartToggleStatus');
+        if (!heartEligible) {
+          heartStatusEl.innerText = selectedEnchant === 4 ? 'Disabled (.4)' : 'Disabled (T2)';
+          heartStatusEl.style.color = 'var(--text-muted)';
+        } else if (!anyHeartSelected) {
+          heartStatusEl.innerText = 'OFF';
+          heartStatusEl.style.color = 'var(--text-muted)';
+        } else {
+          heartStatusEl.innerText = heartBtnOn ? 'ON' : 'OFF';
+          heartStatusEl.style.color = heartBtnOn ? 'var(--gold)' : 'var(--text-muted)';
+        }
+        heartPriceBox.style.display = (isRecursive ? chainUseHeart : directUseHeart) ? 'block' : 'none';
+
+        // Calculations
+        const effectiveRRRUseFocus = isRecursive ? directUseFocus : directUseFocus;
+        const rrr = R.calculateRRR({
+          cityId: selectedCity.id,
+          resourceId: selectedResource.id,
+          useFocus: effectiveRRRUseFocus,
+          dailyBonusPercent,
+          customRRR,
+        });
+
+        const rrrNoFocus = R.calculateRRR({
+          cityId: selectedCity.id,
+          resourceId: selectedResource.id,
+          useFocus: false,
+          dailyBonusPercent,
+          customRRR,
+        });
+
+        const focusCost = R.calculateFocusCost({
+          tier: selectedTier,
+          enchantment: selectedEnchant,
+          specs,
+        });
+
+        const marketFeeRate = R.getMarketFeeRate({ hasPremium, orderType });
+        const buyFeeRate = R.getBuyFeeRate({ buyOrderType });
+
+        // Labels
+        document.getElementById('bonusCityLabel').innerText = `Bonus: ${selectedResource.bonusCity}`;
+        document.getElementById('rrrBadge').innerText = `${(rrr * 100).toFixed(1)}%`;
+        document.getElementById('focusCostVal').innerText = `${focusCost} FP`;
+        appliedFeeText.innerText = `Sell ${(marketFeeRate * 100).toFixed(1)}% · Buy ${(buyFeeRate * 100).toFixed(1)}%`;
+
+        const prevEnch = R.getPrevTierEnchantment(selectedTier, selectedEnchant);
+        const rawId = R.getItemId(selectedResource.rawPrefix, selectedTier, selectedEnchant);
+        const refinedId = R.getItemId(selectedResource.refinedPrefix, selectedTier, selectedEnchant);
+        const prevId = selectedTier > 2 ? R.getItemId(selectedResource.refinedPrefix, selectedTier - 1, prevEnch) : null;
+
+        const rawLbl = document.getElementById('rawPriceLabel');
+        rawLbl.innerHTML = `${formatTierEnchHtml(selectedTier, selectedEnchant)} Raw Buy`;
+
+        const prevLbl = document.getElementById('prevPriceLabel');
+        if (selectedTier > 2) {
+          prevLbl.innerHTML = `${formatTierEnchHtml(selectedTier - 1, prevEnch)} ${selectedResource.refinedName} Buy`;
+        } else {
+          prevLbl.innerText = 'Lower Tier Bar';
+        }
+        document.getElementById('heartPriceLabel').innerText = `${selectedResource.heartName} Buy`;
+
+        document.getElementById('rawIcon').src = R.getRenderUrl(rawId, 1, 64);
+        document.getElementById('refinedIcon').src = R.getRenderUrl(refinedId, 1, 64);
+        const heartIconEl = document.getElementById('heartRecipeIcon');
+        const heartPlusEl = document.getElementById('heartRecipePlus');
+        if (directUseHeart && selectedResource.heartId) {
+          heartIconEl.src = R.getRenderUrl(selectedResource.heartId, 1, 64);
+          heartIconEl.style.display = 'inline-block';
+          heartPlusEl.style.display = 'inline-block';
+        } else {
+          heartIconEl.style.display = 'none';
+          heartPlusEl.style.display = 'none';
+        }
+        if (prevId) {
+          document.getElementById('prevIcon').src = R.getRenderUrl(prevId, 1, 64);
+          document.getElementById('prevIcon').style.display = 'inline-block';
+        } else {
+          document.getElementById('prevIcon').style.display = 'none';
+        }
+
+        const effectiveRawReq = directUseHeart ? (tierData.rawReq - 1) : tierData.rawReq;
+        document.getElementById('recipeText').innerHTML =
+          `1x ${formatTierEnchHtml(selectedTier, selectedEnchant)} ${selectedResource.refinedName} = ${effectiveRawReq}x ${formatTierEnchHtml(selectedTier, selectedEnchant)} Raw` +
+          (directUseHeart ? ` + 1x <span style="color: var(--gold);">${selectedResource.heartName}</span>` : '') +
+          (tierData.prevReq > 0 ? ` + ${tierData.prevReq}x ${formatTierEnchHtml(selectedTier - 1, prevEnch)} Bar` : '');
+        document.getElementById('itemIdText').innerText = `Output ID: ${refinedId}`;
+
+        const curRawPrice = Number(rawPriceInput.value) || 0;
+        const curHeartPrice = Number(heartPriceInput.value) || 0;
+        const curPrevPrice = Number(prevPriceInput.value) || 0;
+        const curSellPrice = Number(sellPriceInput.value) || 0;
+
+        let displayNetProfit = 0;
+        let displayProfitMargin = 0;
+        let displayProfitPerCraft = 0;
+        let displaySilverFocus = null;
+        let displayTotalFocusSpent = 0;
+        let displayRefinedProduced = 0;
+        let displayBreakEven = 0;
+        let activeStagesForExport = null;
+
+        if (isRecursive && selectedTier > 2) {
+          // Recursive Mode
+          const rawPricesMap = {};
+          const refinedPricesMap = {};
+
+          for (let t = 2; t <= selectedTier; t++) {
+            const e = (t <= 3) ? 0 : selectedEnchant;
+            const rId = R.getItemId(selectedResource.rawPrefix, t, e);
+            const bId = R.getItemId(selectedResource.refinedPrefix, t, e);
+            rawPricesMap[`${t}.${e}`] = priceStore.has(rId) ? priceStore.get(rId).price : 50;
+            refinedPricesMap[`${t}.${e}`] = priceStore.has(bId) ? priceStore.get(bId).price : 100;
+          }
+          rawPricesMap[`${selectedTier}.${selectedEnchant}`] = curRawPrice;
+          if (prevId) refinedPricesMap[`${selectedTier - 1}.${prevEnch}`] = curPrevPrice;
+
+          const focusRRR = R.calculateRRR({
+            cityId: selectedCity.id,
+            resourceId: selectedResource.id,
+            useFocus: true,
+            dailyBonusPercent,
+            customRRR,
+          });
+
+          const activeFocusMap = {};
+          [3, 4, 5, 6, 7, 8].forEach(t => { activeFocusMap[t] = useFocus && Boolean(focusTiers[t]); });
+
+          const recSim = R.simulateRecursiveRefining({
+            targetTier: selectedTier,
+            targetEnchantment: selectedEnchant,
+            batchCrafts: batchSize,
+            rawPrices: rawPricesMap,
+            refinedPrices: refinedPricesMap,
+            targetSellPrice: curSellPrice,
+            rrr: focusRRR,
+            rrrNoFocus,
+            compound,
+            feePer100Nutrition: stationTaxPer100,
+            focusTiers: activeFocusMap,
+            specs,
+            marketFeeRate,
+            buyFeeRate,
+            useHeart: useHeart && heartEligible,
+            heartTiers,
+            heartPrice: curHeartPrice,
+          });
+
+          activeStagesForExport = recSim.stages;
+          displayNetProfit = recSim.netProfit;
+          displayProfitMargin = recSim.profitMargin;
+          displayProfitPerCraft = recSim.totalRefinedProduced > 0 ? recSim.netProfit / recSim.totalRefinedProduced : 0;
+          displaySilverFocus = recSim.silverPerFocus;
+          displayTotalFocusSpent = recSim.totalFocusSpent;
+          displayRefinedProduced = recSim.totalRefinedProduced;
+          displayBreakEven = recSim.breakEvenPrice;
+
+          document.getElementById('recursiveStagesCount').innerText = `${recSim.stages.length} Tiers (T2 to T${selectedTier})`;
+          recursiveTableBody.innerHTML = '';
+
+          recSim.stages.forEach(st => {
+            const tr = document.createElement('tr');
+            const stageBadges = (st.useFocus ? ' <span title="Focus Active" style="color:var(--cyan);">⚡</span>' : '') +
+              (st.heartActive ? ' <span title="Faction Heart Active" style="color:var(--gold);">🫀</span>' : '');
+            const heartAddText = st.heartsConsumed > 0
+              ? ` <span style="color:var(--gold); font-size:10px;">+ ${st.heartsConsumed.toLocaleString()} 🫀</span>`
+              : '';
+            tr.innerHTML = `
+              <td>
+                ${formatTierEnchHtml(st.tier, st.enchantment)}
+                <span> ${selectedResource.refinedName}${stageBadges}</span>
+                <span style="font-size: 9px; color: var(--text-muted); display: block;">RRR ${(st.stageRRR * 100).toFixed(1)}%</span>
+              </td>
+              <td>${st.crafts.toLocaleString()}</td>
+              <td>${st.netRawNeeded.toLocaleString()} ${formatTierEnchHtml(st.tier, st.enchantment)}${heartAddText}</td>
+              <td>${st.rawPrice.toLocaleString()} s</td>
+              <td class="text-neg">-${Math.round(st.stationCost).toLocaleString()}</td>
+              <td style="color: var(--cyan);">${st.focusSpent > 0 ? st.focusSpent.toLocaleString() + ' FP' : '-'}</td>
+              <td style="text-align: right; font-weight: 700; color: var(--success);">${st.refinedProduced.toLocaleString()}</td>
+            `;
+            recursiveTableBody.appendChild(tr);
+          });
+
+          document.getElementById('compMarketCost').innerText = `${Math.round(recSim.directMarketExpense).toLocaleString()} Silver`;
+          document.getElementById('compSelfCost').innerText = `${Math.round(recSim.totalRecursiveExpense).toLocaleString()} Silver`;
+
+          const savings = recSim.selfRefineSavings;
+          const savElem = document.getElementById('compSavings');
+          savElem.innerText = `${savings >= 0 ? '+' : ''}${Math.round(savings).toLocaleString()} Silver`;
+          savElem.className = savings >= 0 ? 'text-pos' : 'text-neg';
+          document.getElementById('compSavingsSub').innerText = savings >= 0
+            ? 'Self-refining lower tiers saves silver!'
+            : 'Cheaper to buy lower tiers directly!';
+
+          document.getElementById('labelRawCost').innerText = 'Net Raw Material Cost (Full Recursive Chain)';
+          document.getElementById('rowRawCost').innerText = `-${Math.round(recSim.totalRawCost).toLocaleString()}`;
+          if (recSim.totalHeartsConsumed > 0) {
+            document.getElementById('rowHeartCostWrapper').style.display = 'table-row';
+            document.getElementById('rowHeartCostLabel').innerText = `Net Faction Hearts Consumed (${recSim.totalHeartsConsumed.toLocaleString()} × ${selectedResource.heartName})`;
+            document.getElementById('rowHeartCost').innerText = `-${Math.round(recSim.totalHeartCost).toLocaleString()}`;
+          } else {
+            document.getElementById('rowHeartCostWrapper').style.display = 'none';
+          }
+          document.getElementById('rowPrevTierWrapper').style.display = 'none';
+          if (recSim.buyFeeSilver > 0) {
+            document.getElementById('rowBuyFeeWrapper').style.display = 'table-row';
+            document.getElementById('rowBuyFee').innerText = `-${Math.round(recSim.buyFeeSilver).toLocaleString()}`;
+          } else {
+            document.getElementById('rowBuyFeeWrapper').style.display = 'none';
+          }
+          document.getElementById('rowStationFee').innerText = `-${Math.round(recSim.totalStationCost).toLocaleString()}`;
+          document.getElementById('rowTotalExpense').innerText = `-${Math.round(recSim.totalRecursiveExpense).toLocaleString()}`;
+          document.getElementById('rowGrossRevenue').innerText = `+${Math.round(recSim.grossRevenue).toLocaleString()}`;
+          document.getElementById('rowMarketTax').innerText = `-${Math.round(recSim.marketTaxSilver).toLocaleString()}`;
+          document.getElementById('rowSalvageWrapper').style.display = 'none';
+
+          const rowNet = document.getElementById('rowNetProfit');
+          rowNet.innerText = `${displayNetProfit > 0 ? '+' : ''}${Math.round(displayNetProfit).toLocaleString()} Silver`;
+          rowNet.className = displayNetProfit > 0 ? 'text-pos' : 'text-neg';
+
+          document.getElementById('outputVal').innerText = `${recSim.totalRefinedProduced.toLocaleString()} Refined`;
+          document.getElementById('outputSub').innerText = 'Recursive Chain: self-crafted from T2 raw';
+        } else {
+          // Direct Mode
+          const stationFee = R.calculateStationFee({
+            tier: selectedTier,
+            enchantment: selectedEnchant,
+            feePer100Nutrition: stationTaxPer100,
+          });
+
+          const sim = R.simulateRefining({
+            tier: selectedTier,
+            enchantment: selectedEnchant,
+            batchCrafts: batchSize,
+            rawPrice: curRawPrice,
+            prevTierPrice: selectedTier > 2 ? curPrevPrice : 0,
+            sellPrice: curSellPrice,
+            rrr,
+            compound,
+            stationFeePerCraft: stationFee,
+            useFocus: directUseFocus,
+            focusCostPerCraft: focusCost,
+            marketFeeRate,
+            buyFeeRate,
+            useHeart: directUseHeart,
+            heartPrice: curHeartPrice,
+          });
+
+          displayNetProfit = sim.netProfit;
+          displayProfitMargin = sim.profitMargin;
+          displayProfitPerCraft = sim.profitPerCraft;
+          displaySilverFocus = sim.silverPerFocus;
+          displayTotalFocusSpent = sim.totalFocusSpent;
+          displayRefinedProduced = sim.totalRefinedProduced;
+          displayBreakEven = sim.breakEvenPrice;
+
+          document.getElementById('labelRawCost').innerText = `Initial Raw Material Cost (${sim.initialRawUnits.toLocaleString()} units)`;
+          document.getElementById('rowRawCost').innerText = `-${Math.round(sim.totalRawCost).toLocaleString()}`;
+          if (sim.totalHeartsBought > 0) {
+            document.getElementById('rowHeartCostWrapper').style.display = 'table-row';
+            document.getElementById('rowHeartCostLabel').innerText = `${selectedResource.heartName} Bought (${sim.totalHeartsBought.toLocaleString()} upfront / ${sim.netHeartsConsumed.toLocaleString()} net)`;
+            document.getElementById('rowHeartCost').innerText = `-${Math.round(sim.totalHeartCost).toLocaleString()}`;
+          } else {
+            document.getElementById('rowHeartCostWrapper').style.display = 'none';
+          }
+          if (selectedTier > 2) {
+            document.getElementById('rowPrevTierWrapper').style.display = 'table-row';
+            document.getElementById('rowPrevTierLabel').innerHTML =
+              `${formatTierEnchHtml(selectedTier - 1, prevEnch)} ${selectedResource.refinedName} Bought (${sim.totalPrevBought.toLocaleString()} upfront / ${sim.netPrevConsumed.toLocaleString()} net)`;
+            document.getElementById('rowPrevCost').innerText = `-${Math.round(sim.totalPrevTierCost).toLocaleString()}`;
+          }
+          if (sim.buyFeeSilver > 0) {
+            document.getElementById('rowBuyFeeWrapper').style.display = 'table-row';
+            document.getElementById('rowBuyFee').innerText = `-${Math.round(sim.buyFeeSilver).toLocaleString()}`;
+          } else {
+            document.getElementById('rowBuyFeeWrapper').style.display = 'none';
+          }
+          document.getElementById('rowStationFee').innerText = `-${Math.round(sim.totalStationCost).toLocaleString()}`;
+          document.getElementById('rowTotalExpense').innerText = `-${Math.round(sim.totalExpense).toLocaleString()}`;
+          document.getElementById('rowGrossRevenue').innerText = `+${Math.round(sim.grossRevenue).toLocaleString()}`;
+          document.getElementById('rowMarketTax').innerText = `-${Math.round(sim.marketTaxSilver).toLocaleString()}`;
+
+          const salWrapper = document.getElementById('rowSalvageWrapper');
+          if (sim.leftoverSalvageValue > 0) {
+            salWrapper.style.display = 'table-row';
+            const heartSal = sim.leftoverHearts > 0 ? `, ${sim.leftoverHearts} heart` : '';
+            document.getElementById('rowSalvage').innerText = `+${Math.round(sim.leftoverSalvageValue).toLocaleString()} (${sim.leftoverRaw} raw, ${sim.leftoverPrev} bar${heartSal})`;
+          } else {
+            salWrapper.style.display = 'none';
+          }
+
+          const rowNet = document.getElementById('rowNetProfit');
+          rowNet.innerText = `${displayNetProfit > 0 ? '+' : ''}${Math.round(displayNetProfit).toLocaleString()} Silver`;
+          rowNet.className = displayNetProfit > 0 ? 'text-pos' : 'text-neg';
+
+          document.getElementById('outputVal').innerText = `${sim.totalRefinedProduced.toLocaleString()} Refined`;
+          const heartBuySub = sim.totalHeartsBought > 0 ? ` + ${sim.totalHeartsBought.toLocaleString()} ${selectedResource.heartName}` : '';
+          document.getElementById('outputSub').innerHTML =
+            selectedTier > 2
+              ? `Buy: ${sim.initialRawUnits.toLocaleString()} Raw${heartBuySub} + ${sim.totalPrevBought.toLocaleString()} ${formatTierEnchHtml(selectedTier - 1, prevEnch)} Bar`
+              : `Buy: ${sim.initialRawUnits.toLocaleString()} Raw`;
+        }
+
+        // Batch summary preview right next to batch input
+        const previewEl = document.getElementById('batchCraftsPreview');
+        if (previewEl) {
+          previewEl.innerText =
+            `➔ ${displayRefinedProduced.toLocaleString()} total crafts` +
+            (useFocus && displayTotalFocusSpent > 0 ? ` (${displayTotalFocusSpent.toLocaleString()} FP)` : '');
+        }
+
+        // KPI Updates
+        const isProf = displayNetProfit > 0;
+        const netProfitVal = document.getElementById('netProfitVal');
+        netProfitVal.innerText = `${isProf ? '+' : ''}${Math.round(displayNetProfit).toLocaleString()} Silver`;
+        netProfitVal.className = 'kpi-val ' + (isProf ? 'text-pos' : 'text-neg');
+
+        document.getElementById('profitSub').innerText =
+          `${displayProfitMargin > 0 ? '+' : ''}${displayProfitMargin.toFixed(1)}% ROI · ${Math.round(displayProfitPerCraft).toLocaleString()} / craft`;
+
+        const sfVal = document.getElementById('silverFocusVal');
+        if (displayTotalFocusSpent > 0 && displaySilverFocus !== null) {
+          sfVal.innerText = `${displaySilverFocus.toFixed(1)} S/FP`;
+          let rating = 'Low';
+          if (displaySilverFocus >= 100) rating = 'Godly';
+          else if (displaySilverFocus >= 60) rating = 'High';
+          else if (displaySilverFocus >= 35) rating = 'Decent';
+          document.getElementById('focusRatingSub').innerText = `${rating} · Spent ${displayTotalFocusSpent.toLocaleString()} FP`;
+        } else {
+          sfVal.innerText = 'Off';
+          document.getElementById('focusRatingSub').innerText = 'No Focus Used';
+        }
+
+        document.getElementById('breakEvenVal').innerText = `${displayBreakEven.toLocaleString()} Silver`;
+
+        // Discord Export
+        document.getElementById('copyDiscordBtn').onclick = () => {
+          const chainLines = activeStagesForExport
+            ? '\n--- Recursive Raw Bill ---\n' +
+              activeStagesForExport.map(s => `T${s.tier}.${s.enchantment}: ${s.netRawNeeded.toLocaleString()} raw @ ${s.rawPrice}s`).join('\n')
+            : '';
+          const table =
+`\`\`\`asciidoc
+=== ALBION REFINING PROFIT REPORT ===
+Item:        T${selectedTier}.${selectedEnchant} ${selectedResource.refinedName}
+Mode:        ${isRecursive ? 'Recursive (Self-Refined Chain)' : 'Direct Buy'}
+City:        ${selectedCity.name} (RRR: ${(rrr*100).toFixed(1)}%)
+Batch:       ${batchSize.toLocaleString()} crafts ➔ ${displayRefinedProduced.toLocaleString()} produced
+Raw Price:   ${curRawPrice} silver | Bar Price: ${curSellPrice} silver${chainLines}
+-----------------------------------------
+Net Revenue: ${Math.round(displayRefinedProduced * curSellPrice * (1 - marketFeeRate)).toLocaleString()} silver
+NET PROFIT:  ${Math.round(displayNetProfit).toLocaleString()} silver (${displayProfitMargin.toFixed(1)}% ROI)
+Profit/item: ${Math.round(displayProfitPerCraft).toLocaleString()} silver
+Break-even:  ${displayBreakEven.toLocaleString()} silver
+${displayTotalFocusSpent > 0 && displaySilverFocus !== null ? `S / Focus:   ${displaySilverFocus.toFixed(1)} S/FP (${displayTotalFocusSpent.toLocaleString()} FP)` : 'Focus:       Not used'}
+\`\`\``;
+          navigator.clipboard.writeText(table);
+          const b = document.getElementById('copyDiscordBtn');
+          b.innerText = '✓ Copied!';
+          setTimeout(() => { b.innerText = '📋 Copy for Discord'; }, 2000);
+        };
+
+        // CSV Export
+        document.getElementById('exportCsvBtn').onclick = () => {
+          const csv = [
+            ['Metric', 'Value'],
+            ['Resource', `T${selectedTier}.${selectedEnchant} ${selectedResource.refinedName}`],
+            ['Mode', isRecursive ? 'Recursive' : 'Direct'],
+            ['City', selectedCity.name],
+            ['RRR', (rrr * 100).toFixed(1) + '%'],
+            ['Refined Output', displayRefinedProduced],
+            ['Net Profit', displayNetProfit],
+            ['Profit Margin %', displayProfitMargin.toFixed(2)],
+            ['Break-even Price', displayBreakEven],
+            ['Silver / Focus', displaySilverFocus || 0]
+          ].map(row => row.join(',')).join('\n');
+
+          const blob = new Blob([csv], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `albion_refining_T${selectedTier}_${selectedEnchant}.csv`;
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+
+        saveSession();
+      }
+
+      // Initialize & Restore Previous Session
+      loadSession();
+      syncControlsUI();
+      syncCurrentItemPrices();
+      render();
+      renderPriceMatrix();
+
+      window.addEventListener('beforeunload', saveSession);
+      window.addEventListener('pagehide', saveSession);
+    })();
+  </script>
+</body>
+</html>
