@@ -6,6 +6,7 @@
 
 import './albion_rules.js';
 import './albion_farming_rules.js';
+import './albion_crafting_rules.js';
 
 const {
   RESOURCES,
@@ -678,6 +679,258 @@ assert(
 assert(F.fitTilesToFocus({ focusBudget: 10000, mastery: 100, spec: 100 }) === 80, '10k Focus at max spec waters exactly 80 tiles (80 * 125 = 10,000 FP)');
 assert(F.fitTilesToFocus({ focusBudget: 20000, mastery: 100, spec: 100 }) === 160, '20k Focus at max spec waters exactly 160 tiles');
 assert(F.fitTilesToFocus({ focusBudget: 30000, mastery: 100, spec: 100 }) === 240, '30k Focus at max spec waters exactly 240 tiles');
+
+// 12. Equipment Crafting Rules & Profit Engine Tests
+console.log('\n[12] Equipment Crafting Rules & Profit Engine:');
+const C = globalThis.AlbionCraftingRules;
+
+assert(C.CATEGORIES.length === 4, 'All 4 Crafting Trees registered (Warrior, Hunter, Mage, Toolmaker)');
+assert(C.ITEMS.length >= 35, 'Comprehensive equipment & accessory crafting catalog loaded', `Count: ${C.ITEMS.length}`);
+
+const swordItem = C.ITEMS.find(i => i.id === 'broadsword');
+const bagItem = C.ITEMS.find(i => i.id === 'bag');
+const glovesItem = C.ITEMS.find(i => i.id === 'brawler_gloves');
+
+// Verify Exact Crafting RRR (LPB / (1 + LPB))
+const craftRrrOffNoFocus = C.calculateCraftingRRR({ cityId: 'Thetford', item: swordItem, useFocus: false });
+const craftRrrBonusNoFocus = C.calculateCraftingRRR({ cityId: 'Lymhurst', item: swordItem, useFocus: false });
+const craftRrrOffFocus = C.calculateCraftingRRR({ cityId: 'Thetford', item: swordItem, useFocus: true });
+const craftRrrBonusFocus = C.calculateCraftingRRR({ cityId: 'Lymhurst', item: swordItem, useFocus: true });
+const craftRrrIslandNoFocus = C.calculateCraftingRRR({ cityId: 'Island', item: swordItem, useFocus: false });
+const craftRrrIslandFocus = C.calculateCraftingRRR({ cityId: 'Island', item: swordItem, useFocus: true });
+
+assert(Math.abs(craftRrrOffNoFocus.percentage - 15.25) < 0.05, 'Royal Off-City without Focus RRR is 15.25% (0.18 / 1.18)');
+assert(Math.abs(craftRrrBonusNoFocus.percentage - 24.81) < 0.05, 'Bonus City (+15% LPB) without Focus RRR is 24.81% (0.33 / 1.33)');
+assert(Math.abs(craftRrrOffFocus.percentage - 43.50) < 0.05, 'Royal Off-City with Focus RRR is 43.50% (0.77 / 1.77)');
+assert(Math.abs(craftRrrBonusFocus.percentage - 47.92) < 0.05, 'Bonus City (+15% LPB) with Focus RRR is 47.92% (0.92 / 1.92)');
+assert(craftRrrIslandNoFocus.percentage === 0, 'Island without Focus RRR is 0%');
+assert(Math.abs(craftRrrIslandFocus.percentage - 37.11) < 0.05, 'Island with Focus RRR is 37.11% (0.59 / 1.59)');
+
+// Verify Brecilien Bag & Caerleon War Gloves Bonuses
+assert(
+  C.calculateCraftingRRR({ cityId: 'Brecilien', item: bagItem, useFocus: false }).hasBonus === true,
+  'Brecilien grants +15% crafting specialty bonus to Bags & Capes'
+);
+assert(
+  C.calculateCraftingRRR({ cityId: 'Caerleon', item: glovesItem, useFocus: false }).hasBonus === true,
+  'Caerleon grants +15% crafting specialty bonus to War Gloves & Tools'
+);
+
+// Verify Material & Output IDs
+assert(C.getMaterialItemId('METALBAR', 6, 0) === 'T6_METALBAR', 'T6.0 Metal Bar ID is T6_METALBAR');
+assert(C.getMaterialItemId('METALBAR', 6, 3) === 'T6_METALBAR_LEVEL3@3', 'T6.3 Metal Bar ID is T6_METALBAR_LEVEL3@3');
+assert(C.getCraftedItemId(swordItem, 7, 2) === 'T7_MAIN_SWORD@2', 'T7.2 Broadsword ID is T7_MAIN_SWORD@2');
+
+// Verify Compounding Material Conservation Invariant (Bought - Leftover === Used - Returned)
+const craftSim = C.simulateCrafting({
+  itemId: 'broadsword',
+  tier: 6,
+  enchantment: 1,
+  cityId: 'Lymhurst',
+  useFocus: true,
+  compound: true,
+  useJournals: true,
+  quantity: 25,
+  mastery: 100,
+  spec: 100,
+  crossSpec: 200,
+  feePer100Nutrition: 400,
+  primaryMatPrice: 5200,
+  secondaryMatPrice: 4800,
+  emptyJournalPrice: 14400,
+  fullJournalPrice: 54000,
+  outputPrice: 145000,
+  marketFeeRate: 0.065,
+  buyFeeRate: 0.025,
+});
+
+assert(
+  craftSim.totalCrafts > craftSim.initialCrafts,
+  'Compounding crafting produces more total items than initial batch',
+  `Initial=${craftSim.initialCrafts}, Total=${craftSim.totalCrafts}`
+);
+assert(
+  craftSim.primaryBought - craftSim.primaryLeftover === craftSim.primaryUsed - craftSim.primaryReturned &&
+  craftSim.secondaryBought - craftSim.secondaryLeftover === craftSim.secondaryUsed - craftSim.secondaryReturned,
+  'Exact conservation for both primary & secondary materials: Bought - Leftover === Used - Returned'
+);
+assert(
+  craftSim.journalsFilled > 0 && craftSim.journalGrossRevenue > craftSim.journalPurchaseCost,
+  'Crafting journal filling calculates exact fractional journals filled and journal revenue'
+);
+
+// Verify Break-Even Sell Price & Crafted Cost / Unit
+const beCraftSim = C.simulateCrafting({
+  itemId: 'broadsword',
+  tier: 6,
+  enchantment: 1,
+  cityId: 'Lymhurst',
+  useFocus: true,
+  compound: true,
+  useJournals: true,
+  quantity: 25,
+  mastery: 100,
+  spec: 100,
+  crossSpec: 200,
+  feePer100Nutrition: 400,
+  primaryMatPrice: 5200,
+  secondaryMatPrice: 4800,
+  emptyJournalPrice: 14400,
+  fullJournalPrice: 54000,
+  outputPrice: craftSim.breakEvenPrice,
+  marketFeeRate: 0.065,
+  buyFeeRate: 0.025,
+});
+assert(
+  Math.abs(beCraftSim.netProfit) < 1,
+  'Crafting break-even sell price yields exact 0 net profit',
+  `NetProfit at break-even: ${beCraftSim.netProfit.toFixed(4)}`
+);
+assert(
+  Math.abs(craftSim.unitCraftCost - craftSim.breakEvenPrice * (1 - 0.065)) < 1,
+  'Crafted Cost / Unit matches Break-Even Sell Price net of market sales tax'
+);
+
+// Verify fitBatchToCraftingFocus stays within Focus Pool
+const fittedBatch10k = C.fitBatchToCraftingFocus({
+  focusPool: 10000,
+  item: swordItem,
+  tier: 6,
+  enchantment: 0,
+  cityId: 'Lymhurst',
+  compound: true,
+  mastery: 100,
+  spec: 100,
+  crossSpec: 100,
+});
+const fittedSim10k = C.simulateCrafting({
+  itemId: 'broadsword',
+  tier: 6,
+  enchantment: 0,
+  cityId: 'Lymhurst',
+  useFocus: true,
+  compound: true,
+  quantity: fittedBatch10k,
+  mastery: 100,
+  spec: 100,
+  crossSpec: 100,
+});
+assert(
+  fittedSim10k.totalFocusCost <= 10000 && fittedSim10k.totalFocusCost > 0,
+  'fitBatchToCraftingFocus (10k Focus) stays within 10,000 FP budget',
+  `InitialBatch=${fittedBatch10k}, TotalCrafts=${fittedSim10k.totalCrafts}, FocusSpent=${fittedSim10k.totalFocusCost}`
+);
+
+// Verify Equipment Trees (Swords, Axes, etc.), Artifact 0% RRR, and Outlands Hideout RRR
+assert(C.TREES.length === 31, 'All 31 Equipment & Accessory Trees registered across the 4 Stations', `Got: ${C.TREES.length}`);
+assert(C.ITEMS.length >= 215, 'All 215+ weapons, armors, off-hands, bags, capes & tools loaded', `Count: ${C.ITEMS.length}`);
+
+const swordTreeItems = C.ITEMS.filter(i => i.treeId === 'swords');
+assert(
+  swordTreeItems.length === 8 &&
+  swordTreeItems.some(i => i.name === 'Broadsword') &&
+  swordTreeItems.some(i => i.name === 'Claymore') &&
+  swordTreeItems.some(i => i.name === 'Dual Swords') &&
+  swordTreeItems.some(i => i.name === 'Carving Sword'),
+  'Swords tree contains all 8 swords (Broadsword, Claymore, Dual Swords, Clarent, Carving, Galatine, Kingmaker, Infinity Blade)'
+);
+
+const carvingItem = C.ITEMS.find(i => i.id === 'carving');
+const claymoreItem = C.ITEMS.find(i => i.id === 'claymore');
+assert(
+  C.getArtifactItemId(carvingItem, 6) === 'T6_ARTEFACT_2H_CLEAVER_HELL',
+  'Artifact ID scales by tier and never has enchantment suffix'
+);
+
+// Artifact & Journal 0% RRR Invariant Test
+const artCraftSim = C.simulateCrafting({
+  itemId: 'carving',
+  tier: 6,
+  enchantment: 2,
+  cityId: 'Lymhurst',
+  useFocus: true,
+  compound: true,
+  useJournals: true,
+  quantity: 10,
+  primaryMatPrice: 12000,
+  secondaryMatPrice: 11000,
+  artifactPrice: 85000,
+  emptyJournalPrice: 14400,
+  fullJournalPrice: 54000,
+  outputPrice: 480000,
+  marketFeeRate: 0.065,
+  buyFeeRate: 0.025,
+});
+
+assert(
+  artCraftSim.hasArtifact === true &&
+  artCraftSim.artifactsBought === artCraftSim.totalCrafts &&
+  artCraftSim.artifactsUsed === artCraftSim.totalCrafts &&
+  artCraftSim.artifactsReturned === 0 &&
+  artCraftSim.artifactsLeftover === 0,
+  'Artifacts are NEVER affected by RRR (1 consumed per craft, 0 returned, 0 leftover)',
+  `TotalCrafts=${artCraftSim.totalCrafts}, ArtifactsBought=${artCraftSim.artifactsBought}, Returned=${artCraftSim.artifactsReturned}`
+);
+
+assert(
+  artCraftSim.journalsReturned === 0 &&
+  Math.abs(
+    C.calculateJournalMetrics({ item: carvingItem, tier: 6, enchantment: 2 }).famePerCraft -
+    C.calculateJournalMetrics({ item: claymoreItem, tier: 6, enchantment: 2 }).famePerCraft
+  ) < 0.001,
+  'Journals are NEVER affected by RRR and artifact does not inflate journal crafting fame'
+);
+
+// Outlands Hideout Zone Quality (Q1-Q6) & Power Level (1-9) RRR Tests
+const hoQ6L9MatchNoFocus = C.calculateCraftingRRR({
+  cityId: 'Hideout',
+  item: swordItem,
+  useFocus: false,
+  hideoutZoneQuality: 6,
+  hideoutPowerLevel: 9,
+  hideoutBiomeMatch: true,
+});
+const hoQ6L9MatchFocus = C.calculateCraftingRRR({
+  cityId: 'Hideout',
+  item: swordItem,
+  useFocus: true,
+  hideoutZoneQuality: 6,
+  hideoutPowerLevel: 9,
+  hideoutBiomeMatch: true,
+});
+const hoQ6L9NoMatchNoFocus = C.calculateCraftingRRR({
+  cityId: 'Hideout',
+  item: swordItem,
+  useFocus: false,
+  hideoutZoneQuality: 6,
+  hideoutPowerLevel: 9,
+  hideoutBiomeMatch: false,
+});
+const hoQ1L1NoFocus = C.calculateCraftingRRR({
+  cityId: 'Hideout',
+  item: swordItem,
+  useFocus: false,
+  hideoutZoneQuality: 1,
+  hideoutPowerLevel: 1,
+  hideoutBiomeMatch: false,
+});
+
+assert(
+  Math.abs(hoQ6L9MatchNoFocus.lpb - 0.82) < 0.0001 && Math.abs(hoQ6L9MatchNoFocus.percentage - 45.05) < 0.05,
+  'Hideout Q6 (+26%) + Power Lvl 9 (+26% Gen + 30% Spec = +82% LPB) without Focus is 45.05% RRR'
+);
+assert(
+  Math.abs(hoQ6L9MatchFocus.lpb - 1.41) < 0.0001 && Math.abs(hoQ6L9MatchFocus.percentage - 58.51) < 0.05,
+  'Hideout Q6 + Power Lvl 9 + Biome Match with Focus (+141% LPB) is 58.51% RRR'
+);
+assert(
+  Math.abs(hoQ6L9NoMatchNoFocus.lpb - 0.52) < 0.0001 && Math.abs(hoQ6L9NoMatchNoFocus.percentage - 34.21) < 0.05,
+  'Hideout Q6 + Power Lvl 9 without Biome Match (+52% LPB) is 34.21% RRR'
+);
+assert(
+  Math.abs(hoQ1L1NoFocus.lpb - 0.01) < 0.0001 && Math.abs(hoQ1L1NoFocus.percentage - 0.99) < 0.05,
+  'Hideout Q1 (+1%) + Power Lvl 1 (0%) without Focus is 0.99% RRR'
+);
 
 console.log('\n=====================================================');
 console.log(`TEST RESULTS: ${passedCount} PASSED, ${failedCount} FAILED`);
