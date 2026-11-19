@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Albion Online — Farming Calculator</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
-  <script src="albion_farming_rules.js?v=20261119-1"></script>
-  <script src="albion_api.js?v=20261119-1"></script>
+  <script src="albion_farming_rules.js?v=20261119-2"></script>
+  <script src="albion_api.js?v=20261119-2"></script>
   <style>
     :root {
       --bg: #000000;
@@ -401,9 +401,17 @@
 
     .crop-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
       gap: 6px;
       margin-bottom: 14px;
+    }
+
+    .crop-grid .btn-item {
+      min-width: 0;
+      width: 100%;
+      white-space: normal;
+      padding: 7px 8px;
+      font-size: 11px;
     }
 
     .crop-btn-row {
@@ -411,6 +419,8 @@
       align-items: center;
       gap: 6px;
       justify-content: center;
+      min-width: 0;
+      max-width: 100%;
     }
 
     .crop-btn-icon {
@@ -518,25 +528,30 @@
 
     /* Clickable Price Age Indicator */
     .price-age {
-      font-size: 9px;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-weight: 700;
-      text-transform: uppercase;
+      font-size: 10px;
       font-family: monospace;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--surface-well);
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
       cursor: pointer;
-      border: 1px solid transparent;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 3px;
-      transition: border-color 0.12s, opacity 0.12s;
+      transition: background 0.12s, transform 0.1s;
     }
-    .price-age:hover { border-color: var(--border); opacity: 0.9; }
+    .price-age:hover {
+      background: var(--surface-hover);
+      text-decoration: underline;
+    }
     .price-age:disabled { cursor: wait; opacity: 0.6; }
-    .age-fresh { background: #0f291a; color: var(--success); border-color: #166534; }
-    .age-moderate { background: #29200b; color: var(--gold); border-color: #854d0e; }
-    .age-stale { background: var(--surface-well); color: var(--text-muted); border-color: var(--border-subtle); }
+    .age-fresh { color: var(--success); border-color: var(--success); }
+    .age-moderate { color: var(--cyan); border-color: var(--cyan); }
+    .age-aging { color: var(--warning); border-color: var(--warning); }
+    .age-stale { color: var(--danger); border-color: var(--danger); }
 
     /* KPI Grid */
     .kpi-grid {
@@ -735,10 +750,31 @@
       border: 1.5px solid var(--border);
       border-radius: 12px;
       width: 100%;
-      max-width: 540px;
+      max-width: 780px;
       padding: 20px;
       max-height: 90vh;
       overflow-y: auto;
+    }
+
+    .specs-two-col {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    @media (min-width: 680px) {
+      .specs-two-col { grid-template-columns: 1fr 1fr; }
+    }
+
+    .spec-section-title {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+      border-bottom: 1.5px solid var(--border-subtle);
     }
 
     .spec-card {
@@ -823,27 +859,19 @@
 
         <div class="top-island-row">
           <div class="controls-cluster">
-            <button id="focusToggle" class="btn-toggle active" type="button" title="Water crops/herbs or nurture animals with Focus">
+            <button id="focusToggle" class="btn-toggle active" type="button" title="Water crops or herbs with Focus">
               ⚡ Focus: <span style="color: var(--cyan);">ON</span>
             </button>
 
-            <select id="waterModeSelect" class="pill-select" style="color: var(--cyan);" title="How many tiles to water/nurture with Focus">
+            <select id="waterModeSelect" class="pill-select" style="color: var(--cyan);" title="How many tiles to water with Focus">
               <option value="all">⚡ Water: All (100%)</option>
               <option value="self_sustain">⚡ Water: Self-Sustain (50%)</option>
               <option value="custom">⚡ Water: Custom Tiles</option>
               <option value="none">⚡ Water: None (0%)</option>
             </select>
 
-            <button id="npcCapToggle" class="btn-toggle active" type="button" title="Automatically buy seeds/babies from Farming Merchant NPC if cheaper than Market">
+            <button id="npcCapToggle" class="btn-toggle active" type="button" title="Buy replacement seeds from Farming Merchant NPC if cheaper than Market (when buying deficit seeds)">
               NPC Seed Cap: <span style="color: var(--success);">ON</span>
-            </button>
-
-            <button id="animalModeToggle" class="btn-toggle" type="button" style="display: none;" title="Raise &amp; sell grown animals vs keep grown animals to harvest Eggs/Milk daily">
-              Animal Mode: <span style="color: var(--gold);">Raise Grown</span>
-            </button>
-
-            <button id="favFoodToggle" class="btn-toggle active" type="button" style="display: none;" title="Favorite food halves required crops per animal (9 vs 18)">
-              Favorite Food: <span style="color: var(--success);">ON (9)</span>
             </button>
           </div>
         </div>
@@ -914,7 +942,7 @@
 
               <div class="field-box">
                 <div class="field-label">
-                  <span>Watered / Nurtured Tiles</span>
+                  <span>Watered Tiles</span>
                   <span id="waterPctBadge" style="font-size: 10px; color: var(--cyan);">100%</span>
                 </div>
                 <input type="number" id="wateredTilesInput" min="0" value="45" class="field-input" style="color: var(--cyan);">
@@ -960,15 +988,6 @@
               </div>
               <input type="number" id="seedPriceInput" min="0" class="field-input" value="1950">
               <div id="npcPriceHint" style="font-size: 10px; color: var(--text-muted); font-family: monospace; margin-top: 4px;">NPC Vendor: 2,000 s</div>
-            </div>
-
-            <div class="field-box" id="feedPriceBox" style="display: none;">
-              <div class="field-label">
-                <span id="feedPriceLabel" style="color: var(--gold);">Feed Crop Buy</span>
-                <button type="button" id="feedAgeBadge" class="price-age age-stale" title="Click to refresh price from Europe AODP">Manual</button>
-              </div>
-              <input type="number" id="feedPriceInput" min="0" class="field-input" value="400" style="color: var(--gold);">
-              <div id="feedAmountHint" style="font-size: 10px; color: var(--text-muted); font-family: monospace; margin-top: 4px;">9 crops / animal</div>
             </div>
 
             <div class="field-box">
@@ -1042,10 +1061,6 @@
                 <td id="rowSeedCostLabel">Replacement Seeds Bought</td>
                 <td id="rowSeedCost" class="text-neg">-0</td>
               </tr>
-              <tr id="rowFeedCostWrapper" style="display: none;">
-                <td id="rowFeedCostLabel">Animal Feed Consumed</td>
-                <td id="rowFeedCost" class="text-neg">-0</td>
-              </tr>
               <tr id="rowBuyFeeWrapper" style="display: none;">
                 <td>Buy Order Setup Fee (+2.5%)</td>
                 <td id="rowBuyFee" class="text-neg">-0</td>
@@ -1059,7 +1074,7 @@
                 <td id="rowGrossRevenue" class="text-pos">+0</td>
               </tr>
               <tr id="rowSurplusSeedWrapper" style="display: none;">
-                <td id="rowSurplusSeedLabel">Surplus Seeds / Offspring Sales</td>
+                <td id="rowSurplusSeedLabel">Surplus Seeds Sales</td>
                 <td id="rowSurplusSeed" class="text-pos">+0</td>
               </tr>
               <tr>
@@ -1113,7 +1128,7 @@
         <button type="button" onclick="closeSpecsModal()" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer;">✕</button>
       </div>
 
-      <div id="modalSpecsContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;"></div>
+      <div id="modalSpecsContainer" class="specs-two-col"></div>
 
       <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 12px;">
         <div style="font-size: 12px; color: var(--text-muted);">
@@ -1143,14 +1158,12 @@
       let useFocus = true;
       let waterMode = 'all'; // 'all' | 'self_sustain' | 'custom' | 'none'
       let useNpcCap = true;
-      let animalMode = 'grown'; // 'grown' | 'produce'
-      let useFavoriteFood = true;
       let plots = 5;
       let customWateredTiles = 45;
       let extraTiles = 0;
 
-      // Destiny Board Farming Specs (Mastery 0-100 per category + Spec 0-100 per item)
-      let masteries = { crops: 100, herbs: 100, animals: 100 };
+      // Destiny Board Farming Specs (Mastery 0-100 for Crops & Herbs + Spec 0-100 per item)
+      let masteries = { crops: 100, herbs: 100 };
       let itemSpecs = {};
       F.ITEMS.forEach(item => { itemSpecs[item.id] = 100; });
 
@@ -1158,7 +1171,10 @@
         const savedSpecs = localStorage.getItem(SPECS_STORAGE_KEY);
         if (savedSpecs) {
           const parsed = JSON.parse(savedSpecs);
-          if (parsed.masteries) masteries = { ...masteries, ...parsed.masteries };
+          if (parsed.masteries) {
+            if (typeof parsed.masteries.crops === 'number') masteries.crops = parsed.masteries.crops;
+            if (typeof parsed.masteries.herbs === 'number') masteries.herbs = parsed.masteries.herbs;
+          }
           if (parsed.itemSpecs) itemSpecs = { ...itemSpecs, ...parsed.itemSpecs };
         }
       } catch (e) {}
@@ -1168,7 +1184,6 @@
       F.ITEMS.forEach(item => {
         if (item.seedId) priceStore.set(item.seedId, { price: item.defaultSeedPrice, age: { text: 'Est.', category: 'moderate' } });
         if (item.productId) priceStore.set(item.productId, { price: item.defaultProductPrice, age: { text: 'Est.', category: 'moderate' } });
-        if (item.grownId) priceStore.set(item.grownId, { price: item.defaultGrownPrice, age: { text: 'Est.', category: 'moderate' } });
       });
 
       // DOM References
@@ -1181,8 +1196,6 @@
       const focusToggle = document.getElementById('focusToggle');
       const waterModeSelect = document.getElementById('waterModeSelect');
       const npcCapToggle = document.getElementById('npcCapToggle');
-      const animalModeToggle = document.getElementById('animalModeToggle');
-      const favFoodToggle = document.getElementById('favFoodToggle');
       const categoryGroup = document.getElementById('categoryGroup');
       const itemGroup = document.getElementById('itemGroup');
       const cityGroup = document.getElementById('cityGroup');
@@ -1190,8 +1203,6 @@
       const wateredTilesInput = document.getElementById('wateredTilesInput');
       const seedPriceBox = document.getElementById('seedPriceBox');
       const seedPriceInput = document.getElementById('seedPriceInput');
-      const feedPriceBox = document.getElementById('feedPriceBox');
-      const feedPriceInput = document.getElementById('feedPriceInput');
       const outputPriceInput = document.getElementById('outputPriceInput');
       const appliedFeeText = document.getElementById('appliedFeeText');
       const priceMatrixBody = document.getElementById('priceMatrixBody');
@@ -1221,7 +1232,6 @@
       bindNonNegativeInput(plotsInput, 1);
       bindNonNegativeInput(wateredTilesInput, 0);
       bindNonNegativeInput(seedPriceInput, 0);
-      bindNonNegativeInput(feedPriceInput, 0);
       bindNonNegativeInput(outputPriceInput, 0);
 
       sidebarToggleBtn.onclick = () => {
@@ -1233,19 +1243,6 @@
 
       function setItemPrice(id, price, age = { text: 'Manual', category: 'stale' }) {
         priceStore.set(id, { price: Math.max(0, parseInt(price) || 0), age });
-      }
-
-      function getActiveOutputItemId() {
-        if (selectedItem.category === 'animals') {
-          const mode = (animalMode === 'produce' && selectedItem.productId) ? 'produce' : 'grown';
-          return mode === 'produce' ? selectedItem.productId : selectedItem.grownId;
-        }
-        return selectedItem.productId;
-      }
-
-      function getActiveFeedItemId() {
-        if (selectedItem.category !== 'animals') return null;
-        return useFavoriteFood ? selectedItem.favoriteFoodId : 'T1_CARROT';
       }
 
       function syncControlsUI() {
@@ -1270,17 +1267,6 @@
         npcCapToggle.className = 'btn-toggle' + (useNpcCap ? ' active' : '');
         npcCapToggle.innerHTML = `NPC Seed Cap: <span style="color: ${useNpcCap ? 'var(--success)' : 'var(--text-muted)'};">${useNpcCap ? 'ON' : 'OFF'}</span>`;
 
-        const isAnimal = selectedItem.category === 'animals';
-        const effectiveAnimMode = (isAnimal && animalMode === 'produce' && selectedItem.productId) ? 'produce' : 'grown';
-        animalModeToggle.style.display = isAnimal ? 'inline-flex' : 'none';
-        animalModeToggle.disabled = isAnimal && !selectedItem.productId;
-        animalModeToggle.className = 'btn-toggle' + (effectiveAnimMode === 'produce' ? ' active' : '');
-        animalModeToggle.innerHTML = `Animal Mode: <span style="color: var(--gold);">${effectiveAnimMode === 'produce' ? 'Eggs / Milk' : 'Raise Grown'}</span>`;
-
-        favFoodToggle.style.display = isAnimal ? 'inline-flex' : 'none';
-        favFoodToggle.className = 'btn-toggle' + (useFavoriteFood ? ' active' : '');
-        favFoodToggle.innerHTML = `Favorite Food: <span style="color: ${useFavoriteFood ? 'var(--success)' : 'var(--text-muted)'};">${useFavoriteFood ? 'ON (9)' : 'OFF (18)'}</span>`;
-
         waterModeSelect.value = waterMode;
         plotsInput.value = plots;
       }
@@ -1304,8 +1290,6 @@
             useFocus,
             waterMode,
             useNpcCap,
-            animalMode,
-            useFavoriteFood,
             plots,
             extraTiles,
             customWateredTiles,
@@ -1324,7 +1308,7 @@
           const s = JSON.parse(raw);
           if (!s || typeof s !== 'object') return;
 
-          if (['crops', 'herbs', 'animals'].includes(s.category)) selectedCategory = s.category;
+          if (['crops', 'herbs'].includes(s.category)) selectedCategory = s.category;
           if (s.itemId) {
             const foundItem = F.ITEMS.find(i => i.id === s.itemId);
             if (foundItem) {
@@ -1343,8 +1327,6 @@
           if (typeof s.useFocus === 'boolean') useFocus = s.useFocus;
           if (['all', 'self_sustain', 'custom', 'none'].includes(s.waterMode)) waterMode = s.waterMode;
           if (typeof s.useNpcCap === 'boolean') useNpcCap = s.useNpcCap;
-          if (s.animalMode === 'grown' || s.animalMode === 'produce') animalMode = s.animalMode;
-          if (typeof s.useFavoriteFood === 'boolean') useFavoriteFood = s.useFavoriteFood;
           if (typeof s.plots === 'number' && !Number.isNaN(s.plots)) plots = Math.max(1, Math.round(s.plots));
           if (typeof s.extraTiles === 'number' && !Number.isNaN(s.extraTiles)) extraTiles = Math.max(0, Math.round(s.extraTiles));
           if (typeof s.customWateredTiles === 'number' && !Number.isNaN(s.customWateredTiles)) customWateredTiles = Math.max(0, Math.round(s.customWateredTiles));
@@ -1445,21 +1427,20 @@
         // Items in active category
         const catItems = F.ITEMS.filter(i => i.category === selectedCategory);
         document.getElementById('itemSelectLabel').innerText =
-          selectedCategory === 'crops' ? 'Select Crop' :
-          selectedCategory === 'herbs' ? 'Select Herb' : 'Select Pasture Animal';
+          selectedCategory === 'crops' ? 'Select Crop' : 'Select Herb';
 
         itemGroup.innerHTML = '';
         catItems.forEach(item => {
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'btn-item' + (item.id === selectedItem.id ? ' active' : '');
-          const iconId = item.category === 'animals' ? item.grownId : item.productId;
+          const bonusLabel = F.getItemBonusCities(item).join(' / ') || 'No Bonus';
           btn.innerHTML = `
             <div class="crop-btn-row">
-              <img class="crop-btn-icon" src="${F.getRenderUrl(iconId, 1, 32)}" alt="${item.name}">
+              <img class="crop-btn-icon" src="${F.getRenderUrl(item.productId, 1, 32)}" alt="${item.name}">
               <span class="tier-color-${item.tier}">T${item.tier} ${item.name}</span>
             </div>
-            <span class="sub" style="color: var(--text-muted);">${item.bonusCity || 'No Royal Bonus'}</span>
+            <span class="sub" style="color: var(--text-muted);">${bonusLabel}</span>
           `;
           btn.onclick = () => {
             selectedItem = item;
@@ -1478,7 +1459,7 @@
         F.ISLAND_CITIES.forEach(c => {
           const btn = document.createElement('button');
           btn.type = 'button';
-          const isBonus = Boolean(selectedItem.bonusCity && c.id === selectedItem.bonusCity);
+          const isBonus = F.hasCityBonus(selectedItem, c.id);
           btn.className = 'btn-item' + (c.id === selectedCity.id ? ' active' : '');
           btn.style.color = isBonus ? 'var(--gold)' : 'var(--text)';
           btn.innerHTML = `<div>${c.name}</div>${isBonus ? '<span class="sub" style="color: var(--success);">★ +10% BONUS</span>' : ''}`;
@@ -1493,8 +1474,7 @@
 
       function syncCurrentItemPrices() {
         const seedId = selectedItem.seedId;
-        const outputId = getActiveOutputItemId();
-        const feedId = getActiveFeedItemId();
+        const outputId = selectedItem.productId;
 
         if (seedId && priceStore.has(seedId)) {
           const e = priceStore.get(seedId);
@@ -1511,14 +1491,6 @@
           b.innerText = e.age.text;
           b.className = 'price-age age-' + e.age.category;
           b.onclick = () => refreshSingleItemPrice(outputId, b);
-        }
-        if (feedId && priceStore.has(feedId)) {
-          const e = priceStore.get(feedId);
-          feedPriceInput.value = e.price;
-          const b = document.getElementById('feedAgeBadge');
-          b.innerText = e.age.text;
-          b.className = 'price-age age-' + e.age.category;
-          b.onclick = () => refreshSingleItemPrice(feedId, b);
         }
       }
 
@@ -1546,22 +1518,6 @@
 
       npcCapToggle.onclick = () => { useNpcCap = !useNpcCap; syncControlsUI(); render(); };
 
-      animalModeToggle.onclick = () => {
-        if (selectedItem.category !== 'animals' || !selectedItem.productId) return;
-        animalMode = animalMode === 'grown' ? 'produce' : 'grown';
-        syncControlsUI();
-        syncCurrentItemPrices();
-        render();
-        renderPriceMatrix();
-      };
-
-      favFoodToggle.onclick = () => {
-        useFavoriteFood = !useFavoriteFood;
-        syncControlsUI();
-        syncCurrentItemPrices();
-        render();
-      };
-
       plotsInput.oninput = (e) => {
         if (parseFloat(e.target.value) < 0) e.target.value = 1;
         plots = Math.max(1, parseInt(e.target.value) || 1);
@@ -1586,24 +1542,11 @@
         renderPriceMatrix();
       };
 
-      feedPriceInput.oninput = (e) => {
-        if (parseFloat(e.target.value) < 0) e.target.value = 0;
-        const feedId = getActiveFeedItemId();
-        if (feedId) {
-          setItemPrice(feedId, e.target.value);
-          render();
-          renderPriceMatrix();
-        }
-      };
-
       outputPriceInput.oninput = (e) => {
         if (parseFloat(e.target.value) < 0) e.target.value = 0;
-        const outputId = getActiveOutputItemId();
-        if (outputId) {
-          setItemPrice(outputId, e.target.value);
-          render();
-          renderPriceMatrix();
-        }
+        setItemPrice(selectedItem.productId, e.target.value);
+        render();
+        renderPriceMatrix();
       };
 
       window.setPlots = (p) => {
@@ -1614,9 +1557,6 @@
       };
 
       window.fitFocusPool = (fp) => {
-        const isProduceAnimal = selectedItem.category === 'animals' && animalMode === 'produce' && selectedItem.productId;
-        if (isProduceAnimal) return;
-
         const m = masteries[selectedCategory] || 0;
         const sp = itemSpecs[selectedItem.id] || 0;
         const maxWatered = F.fitTilesToFocus({ focusBudget: fp, mastery: m, spec: sp });
@@ -1648,9 +1588,9 @@
         saveSession();
       };
 
-      // Specs Modal
+      // Specs Modal (Separate Crops & Herbs Columns)
       function updateModalFocusPreview() {
-        const mEl = document.getElementById('modalMasteryRange');
+        const mEl = document.getElementById(`modalMasteryRange_${selectedCategory}`);
         const spEl = document.getElementById(`modalSpec_${selectedItem.id}`);
         const m = mEl ? parseInt(mEl.value) : masteries[selectedCategory];
         const s = spEl ? parseInt(spEl.value) : (itemSpecs[selectedItem.id] || 0);
@@ -1659,46 +1599,59 @@
       }
 
       window.openSpecsModal = () => {
-        const cat = F.CATEGORIES.find(c => c.id === selectedCategory);
-        const catItems = F.ITEMS.filter(i => i.category === selectedCategory);
         const container = document.getElementById('modalSpecsContainer');
         container.innerHTML = '';
 
-        // Category Mastery Card
-        const mCard = document.createElement('div');
-        mCard.className = 'spec-card';
-        mCard.style.borderColor = 'var(--border)';
-        mCard.innerHTML = `
-          <div class="spec-header">
-            <span style="color: var(--gold);">${cat.masteryName} Mastery (100 FCE / lvl)</span>
-            <span id="modalMasteryVal" style="font-family: monospace; color: var(--gold);">${masteries[selectedCategory]}</span>
-          </div>
-          <input type="range" id="modalMasteryRange" min="0" max="100" value="${masteries[selectedCategory]}" style="width: 100%;">
-        `;
-        container.appendChild(mCard);
+        F.CATEGORIES.forEach(cat => {
+          const col = document.createElement('div');
+          col.style.display = 'flex';
+          col.style.flexDirection = 'column';
+          col.style.gap = '8px';
 
-        mCard.querySelector('#modalMasteryRange').oninput = (e) => {
-          document.getElementById('modalMasteryVal').innerText = e.target.value;
-          updateModalFocusPreview();
-        };
+          const title = document.createElement('div');
+          title.className = 'spec-section-title';
+          title.style.color = cat.color;
+          title.innerText = `${cat.name} (${cat.masteryName})`;
+          col.appendChild(title);
 
-        // Per-Item Specs
-        catItems.forEach(item => {
-          const val = itemSpecs[item.id] ?? 100;
-          const card = document.createElement('div');
-          card.className = 'spec-card';
-          card.innerHTML = `
+          // Category Mastery Card
+          const mCard = document.createElement('div');
+          mCard.className = 'spec-card';
+          mCard.style.borderColor = 'var(--border)';
+          mCard.innerHTML = `
             <div class="spec-header">
-              <span class="tier-color-${item.tier}">T${item.tier} ${item.name} Spec (200 FCE / lvl)</span>
-              <span id="modalSpecVal_${item.id}" style="font-family: monospace;">${val}</span>
+              <span style="color: var(--gold);">${cat.masteryName} Mastery (100 FCE/lvl)</span>
+              <span id="modalMasteryVal_${cat.id}" style="font-family: monospace; color: var(--gold);">${masteries[cat.id]}</span>
             </div>
-            <input type="range" id="modalSpec_${item.id}" min="0" max="100" value="${val}" style="width: 100%;">
+            <input type="range" id="modalMasteryRange_${cat.id}" min="0" max="100" value="${masteries[cat.id]}" style="width: 100%;">
           `;
-          card.querySelector(`#modalSpec_${item.id}`).oninput = (e) => {
-            document.getElementById(`modalSpecVal_${item.id}`).innerText = e.target.value;
+          col.appendChild(mCard);
+
+          mCard.querySelector(`#modalMasteryRange_${cat.id}`).oninput = (e) => {
+            document.getElementById(`modalMasteryVal_${cat.id}`).innerText = e.target.value;
             updateModalFocusPreview();
           };
-          container.appendChild(card);
+
+          // Per-Item Specs for this category
+          F.ITEMS.filter(i => i.category === cat.id).forEach(item => {
+            const val = itemSpecs[item.id] ?? 100;
+            const card = document.createElement('div');
+            card.className = 'spec-card';
+            card.innerHTML = `
+              <div class="spec-header">
+                <span class="tier-color-${item.tier}">T${item.tier} ${item.name} Spec</span>
+                <span id="modalSpecVal_${item.id}" style="font-family: monospace;">${val}</span>
+              </div>
+              <input type="range" id="modalSpec_${item.id}" min="0" max="100" value="${val}" style="width: 100%;">
+            `;
+            card.querySelector(`#modalSpec_${item.id}`).oninput = (e) => {
+              document.getElementById(`modalSpecVal_${item.id}`).innerText = e.target.value;
+              updateModalFocusPreview();
+            };
+            col.appendChild(card);
+          });
+
+          container.appendChild(col);
         });
 
         updateModalFocusPreview();
@@ -1706,9 +1659,11 @@
       };
 
       window.closeSpecsModal = () => {
-        const mEl = document.getElementById('modalMasteryRange');
-        if (mEl) masteries[selectedCategory] = parseInt(mEl.value);
-        F.ITEMS.filter(i => i.category === selectedCategory).forEach(item => {
+        F.CATEGORIES.forEach(cat => {
+          const mEl = document.getElementById(`modalMasteryRange_${cat.id}`);
+          if (mEl) masteries[cat.id] = parseInt(mEl.value);
+        });
+        F.ITEMS.forEach(item => {
           const el = document.getElementById(`modalSpec_${item.id}`);
           if (el) itemSpecs[item.id] = parseInt(el.value);
         });
@@ -1731,10 +1686,7 @@
         catItems.forEach(item => {
           if (item.seedId) idSet.add(item.seedId);
           if (item.productId) idSet.add(item.productId);
-          if (item.grownId) idSet.add(item.grownId);
-          if (item.favoriteFoodId) idSet.add(item.favoriteFoodId);
         });
-        if (selectedCategory === 'animals') idSet.add('T1_CARROT');
 
         try {
           const res = await API.fetchPrices({
@@ -1772,19 +1724,15 @@
         const catObj = F.CATEGORIES.find(c => c.id === selectedCategory);
         document.getElementById('sideResourceName').innerText = `All ${catObj.name} (${selectedCity.name} · EU)`;
 
-        const isAnimal = selectedCategory === 'animals';
-        const showProduceCol = isAnimal && animalMode === 'produce';
-        document.getElementById('matrixCol1Header').innerText = isAnimal ? 'Baby Buy' : 'Seed Buy';
-        document.getElementById('matrixCol2Header').innerText = isAnimal ? (showProduceCol ? 'Eggs/Milk Sell' : 'Grown Sell') : 'Harvest Sell';
+        document.getElementById('matrixCol1Header').innerText = 'Seed Buy';
+        document.getElementById('matrixCol2Header').innerText = 'Harvest Sell';
 
         priceMatrixBody.innerHTML = '';
         const catItems = F.ITEMS.filter(i => i.category === selectedCategory);
 
         catItems.forEach(item => {
           const buyId = item.seedId;
-          const sellId = isAnimal
-            ? ((showProduceCol && item.productId) ? item.productId : item.grownId)
-            : item.productId;
+          const sellId = item.productId;
 
           const buyData = priceStore.get(buyId) || { price: 0, age: { text: '-', category: 'stale' } };
           const sellData = priceStore.get(sellId) || { price: 0, age: { text: '-', category: 'stale' } };
@@ -1856,14 +1804,10 @@
         initButtons();
         syncControlsUI();
 
-        const isAnimal = selectedItem.category === 'animals';
-        const effectiveAnimMode = (isAnimal && animalMode === 'produce' && selectedItem.productId) ? 'produce' : 'grown';
-        const canFocus = !(isAnimal && effectiveAnimMode === 'produce');
-
         // Focus button lock
-        const focusDisabled = !canFocus || waterMode === 'none';
+        const focusDisabled = waterMode === 'none';
         focusToggle.disabled = focusDisabled;
-        waterModeSelect.disabled = !canFocus;
+        waterModeSelect.disabled = false;
         const effectiveUseFocus = useFocus && !focusDisabled;
         focusToggle.className = 'btn-toggle' + (effectiveUseFocus ? ' active' : '');
         focusToggle.innerHTML = `⚡ Focus: <span style="color: ${effectiveUseFocus ? 'var(--cyan)' : 'var(--text-muted)'};">${effectiveUseFocus ? 'ON' : 'OFF'}</span>`;
@@ -1876,7 +1820,7 @@
           else if (waterMode === 'custom') activeWatered = Math.min(customWateredTiles, totalTiles);
         }
 
-        wateredTilesInput.disabled = !canFocus;
+        wateredTilesInput.disabled = false;
         if (document.activeElement !== wateredTilesInput) {
           wateredTilesInput.value = activeWatered;
         }
@@ -1886,7 +1830,7 @@
         // Specs summary
         const m = masteries[selectedCategory] || 0;
         const sp = itemSpecs[selectedItem.id] || 0;
-        document.getElementById('specSummaryBadge').innerText = `${m}/${sp}`;
+        document.getElementById('specSummaryBadge').innerText = `C:${masteries.crops} · H:${masteries.herbs}`;
         document.getElementById('quickMasteryVal').innerText = m;
         document.getElementById('quickSpecItemLabel').innerText = selectedItem.name;
         document.getElementById('quickSpecVal').innerText = sp;
@@ -1896,7 +1840,6 @@
 
         const curSeedPrice = Number(seedPriceInput.value) || 0;
         const curOutputPrice = Number(outputPriceInput.value) || 0;
-        const curFeedPrice = Number(feedPriceInput.value) || 0;
 
         const sim = F.simulateFarming({
           itemId: selectedItem.id,
@@ -1908,60 +1851,37 @@
           mastery: m,
           spec: sp,
           seedPrice: curSeedPrice,
-          productPrice: effectiveAnimMode === 'produce' || !isAnimal ? curOutputPrice : 0,
-          grownPrice: isAnimal && effectiveAnimMode === 'grown' ? curOutputPrice : 0,
-          feedPrice: curFeedPrice,
+          productPrice: curOutputPrice,
           useNpcCap,
-          animalMode: effectiveAnimMode,
-          useFavoriteFood,
           marketFeeRate,
           buyFeeRate,
         });
 
         // Header & Card 1 Callout
-        document.getElementById('bonusCityLabel').innerText = selectedItem.bonusCity
-          ? `+10% Bonus: ${selectedItem.bonusCity}`
-          : 'No Royal City Bonus';
+        const bonusCities = F.getItemBonusCities(selectedItem);
+        document.getElementById('bonusCityLabel').innerText = bonusCities.length
+          ? `+10% Bonus: ${bonusCities.join(', ')}`
+          : 'No City Bonus';
 
-        const yieldBadge = document.getElementById('yieldBadge');
-        if (isAnimal && effectiveAnimMode === 'grown') {
-          yieldBadge.innerText = '1 Grown / tile';
-        } else {
-          yieldBadge.innerText = `${sim.yieldPerTile.toFixed(2).replace(/\.00$/, '')} / tile`;
-        }
-
+        document.getElementById('yieldBadge').innerText = `${sim.yieldPerTile.toFixed(2).replace(/\.00$/, '')} / tile`;
         document.getElementById('focusCostVal').innerText = `${sim.focusCostPerTile} FP`;
         appliedFeeText.innerText = `Sell ${(marketFeeRate * 100).toFixed(1)}% · Buy ${(buyFeeRate * 100).toFixed(1)}%`;
 
-        const outputId = getActiveOutputItemId();
         document.getElementById('seedIcon').src = F.getRenderUrl(selectedItem.seedId, 1, 64);
-        document.getElementById('outputIcon').src = F.getRenderUrl(outputId, 1, 64);
+        document.getElementById('outputIcon').src = F.getRenderUrl(selectedItem.productId, 1, 64);
 
-        const outLabel = isAnimal
-          ? (effectiveAnimMode === 'produce' ? selectedItem.productName : selectedItem.grownName)
-          : selectedItem.productName;
+        const outLabel = selectedItem.productName;
+        document.getElementById('recipeText').innerHTML =
+          `1 Tile ➔ ${sim.yieldPerTile.toFixed(2).replace(/\.00$/, '')}x <span class="tier-color-${selectedItem.tier}">T${selectedItem.tier} ${outLabel}</span>`;
+        document.getElementById('returnRateSub').innerText =
+          `Seed Return: ${(selectedItem.baseReturn * 100).toFixed(1)}% base · ${(selectedItem.wateredReturn * 100).toFixed(1)}% watered`;
 
-        document.getElementById('recipeText').innerHTML = isAnimal && effectiveAnimMode === 'grown'
-          ? `1x <span class="tier-color-${selectedItem.tier}">T${selectedItem.tier} ${selectedItem.seedName}</span> + ${sim.feedUnitsPerTile} Feed ➔ 1x <span class="tier-color-${selectedItem.tier}">${outLabel}</span>`
-          : `1 Tile ➔ ${sim.yieldPerTile.toFixed(2).replace(/\.00$/, '')}x <span class="tier-color-${selectedItem.tier}">T${selectedItem.tier} ${outLabel}</span>`;
-
-        document.getElementById('returnRateSub').innerText = isAnimal && effectiveAnimMode === 'produce'
-          ? `Daily Harvest (${sim.growthHours}h) · Consumes ${sim.feedUnitsPerTile} crops/animal`
-          : `Seed/Baby Return: ${(selectedItem.baseReturn * 100).toFixed(1)}% base · ${(selectedItem.wateredReturn * 100).toFixed(1)}% watered`;
-
-        // Card 3 labels & visibility
-        seedPriceBox.style.display = (isAnimal && effectiveAnimMode === 'produce') ? 'none' : 'block';
+        // Card 3 labels
+        seedPriceBox.style.display = 'block';
         document.getElementById('seedPriceLabel').innerText = `${selectedItem.seedName} Buy`;
         document.getElementById('npcPriceHint').innerHTML = sim.boughtFromNpc
           ? `<span style="color: var(--success);">Using NPC Vendor: ${selectedItem.npcSeedPrice.toLocaleString()} s (0% fee)</span>`
           : `NPC Vendor: ${selectedItem.npcSeedPrice.toLocaleString()} s`;
-
-        feedPriceBox.style.display = isAnimal ? 'block' : 'none';
-        if (isAnimal) {
-          const feedName = useFavoriteFood ? selectedItem.favoriteFoodName : 'Carrots (Generic)';
-          document.getElementById('feedPriceLabel').innerText = `Feed: ${feedName}`;
-          document.getElementById('feedAmountHint').innerText = `${sim.feedUnitsPerTile} crops / animal (${sim.totalFeedUnits.toLocaleString()} total)`;
-        }
 
         document.getElementById('outputPriceLabel').innerText = `${outLabel} Sell`;
         document.getElementById('cycleTimeHint').innerText = `Growth Cycle: ${sim.growthHours}h`;
@@ -1990,9 +1910,7 @@
         }
 
         document.getElementById('outputVal').innerText = `${Math.round(sim.totalHarvest).toLocaleString()} ${outLabel}`;
-        if (isAnimal && effectiveAnimMode === 'produce') {
-          document.getElementById('outputSub').innerText = `Feed: ${sim.totalFeedUnits.toLocaleString()} crops`;
-        } else if (sim.seedSurplus > 0.01) {
+        if (sim.seedSurplus > 0.01) {
           document.getElementById('outputSub').innerText = `Surplus: +${sim.seedSurplus.toFixed(1)} ${selectedItem.seedName} to sell`;
         } else if (sim.seedDeficit > 0.01) {
           document.getElementById('outputSub').innerText = `Buy: ${sim.seedDeficit.toFixed(1)} replacement ${selectedItem.seedName}`;
@@ -2010,15 +1928,6 @@
           document.getElementById('rowSeedCost').innerText = `-${Math.round(sim.seedBuyCost).toLocaleString()}`;
         } else {
           document.getElementById('rowSeedCostWrapper').style.display = 'none';
-        }
-
-        if (sim.totalFeedUnits > 0) {
-          document.getElementById('rowFeedCostWrapper').style.display = 'table-row';
-          document.getElementById('rowFeedCostLabel').innerText =
-            `Animal Feed (${sim.totalFeedUnits.toLocaleString()} × ${curFeedPrice.toLocaleString()} s)`;
-          document.getElementById('rowFeedCost').innerText = `-${Math.round(sim.feedCost).toLocaleString()}`;
-        } else {
-          document.getElementById('rowFeedCostWrapper').style.display = 'none';
         }
 
         if (sim.totalBuyFees > 0) {

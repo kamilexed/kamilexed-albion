@@ -5,11 +5,10 @@
  * Covers:
  * - Crops (T1 Carrot through T8 Pumpkin)
  * - Herbs (T2 Arcane Agaric through T8 Ghoul Yarrow)
- * - Pasture Farm Animals (T3 Chicken through T8 Cow) — Raise & Sell Grown OR Daily Eggs/Milk
  * - Wild Blood Royal City Island Biome +10% Yield Bonuses
- * - Exact Seed/Offspring Return Rates (Base vs Watered/Nurtured)
+ * - Exact Seed Return Rates (Base vs Watered)
  * - Destiny Board Focus Efficiency (100 FCE/Mastery + 200 FCE/Spec -> 1,000 FP down to 125 FP)
- * - Market Sales Tax (4% Premium / 8% Non-Premium), Order Setup Fees (+2.5%), Direct Trade (0%), and NPC Seed Vendor Cap
+ * - Market Sales Tax (4% Premium / 8% Non-Premium), Order Setup Fees (+2.5%), Direct Trade (0%), and NPC Seed Cap
  */
 
 (function () {
@@ -22,9 +21,7 @@
 
     const TILES_PER_PLOT = 9;
     const BASE_YIELD_PER_TILE = 4.5; // Average 4.5 items/tile without Premium; 9.0 with Premium
-    const BASE_FOCUS_COST = 1000;    // Base Focus per watered tile / nurtured animal
-    const ANIMAL_FEED_FAVORITE = 9;  // 9 favorite crops per 22h cycle (48 * 2 = 96 nut each)
-    const ANIMAL_FEED_GENERIC = 18;  // 18 non-favorite crops per 22h cycle (48 nut each)
+    const BASE_FOCUS_COST = 1000;    // Base Focus per watered tile
 
     const ISLAND_CITIES = [
       { id: 'Lymhurst', name: 'Lymhurst', biome: 'Forest' },
@@ -32,19 +29,20 @@
       { id: 'Martlock', name: 'Martlock', biome: 'Highlands' },
       { id: 'Fort Sterling', name: 'Fort Sterling', biome: 'Mountain' },
       { id: 'Thetford', name: 'Thetford', biome: 'Swamp' },
+      { id: 'Caerleon', name: 'Caerleon', biome: 'Outlaw' },
+      { id: 'Brecilien', name: 'Brecilien', biome: 'Mists' },
       { id: 'None', name: 'No Bonus', biome: 'Neutral' },
     ];
 
     const CATEGORIES = [
       { id: 'crops', name: 'Crops', masteryName: 'Crop Farmer', plotName: 'Farm Plot', color: '#facc15' },
       { id: 'herbs', name: 'Herbs', masteryName: 'Herbalist', plotName: 'Herb Garden', color: '#4ade80' },
-      { id: 'animals', name: 'Animals', masteryName: 'Animal Breeder', plotName: 'Pasture', color: '#fb923c' },
     ];
 
     /**
-     * Exact verified Albion Online Crop, Herb, and Farm Animal definitions.
-     * Note: NPC seed/baby cost * (1 - baseReturn) === 2,000 silver across all tiers.
-     * Watering/nurturing adds (1 - baseReturn) * 2 -> total return = 2 - baseReturn.
+     * Exact verified Albion Online Crop and Herb definitions.
+     * Note: NPC seed cost * (1 - baseReturn) === 2,000 silver across all tiers.
+     * Watering adds (1 - baseReturn) * 2 -> total return = 2 - baseReturn.
      */
     const ITEMS = [
       // --- CROPS ---
@@ -107,7 +105,8 @@
       {
         id: 'comfrey', category: 'herbs', tier: 3, name: 'Brightleaf Comfrey', seedName: 'Brightleaf Comfrey Seed',
         seedId: 'T3_FARM_COMFREY_SEED', productId: 'T3_COMFREY', productName: 'Brightleaf Comfrey',
-        baseReturn: 3 / 5, wateredReturn: 7 / 5, npcSeedPrice: 5000, bonusCity: null,
+        baseReturn: 3 / 5, wateredReturn: 7 / 5, npcSeedPrice: 5000, bonusCity: 'Caerleon',
+        bonusCities: ['Caerleon'],
         defaultSeedPrice: 4900, defaultProductPrice: 430,
       },
       {
@@ -120,6 +119,7 @@
         id: 'teasel', category: 'herbs', tier: 5, name: 'Dragon Teasel', seedName: 'Dragon Teasel Seed',
         seedId: 'T5_FARM_TEASEL_SEED', productId: 'T5_TEASEL', productName: 'Dragon Teasel',
         baseReturn: 4 / 5, wateredReturn: 6 / 5, npcSeedPrice: 10000, bonusCity: 'Bridgewatch',
+        bonusCities: ['Bridgewatch', 'Caerleon'],
         defaultSeedPrice: 9800, defaultProductPrice: 450,
       },
       {
@@ -132,6 +132,7 @@
         id: 'mullein', category: 'herbs', tier: 7, name: 'Firetouched Mullein', seedName: 'Firetouched Mullein Seed',
         seedId: 'T7_FARM_MULLEIN_SEED', productId: 'T7_MULLEIN', productName: 'Firetouched Mullein',
         baseReturn: 41 / 45, wateredReturn: 49 / 45, npcSeedPrice: 22500, bonusCity: 'Thetford',
+        bonusCities: ['Thetford', 'Caerleon'],
         defaultSeedPrice: 22000, defaultProductPrice: 480,
       },
       {
@@ -139,50 +140,6 @@
         seedId: 'T8_FARM_YARROW_SEED', productId: 'T8_YARROW', productName: 'Ghoul Yarrow',
         baseReturn: 14 / 15, wateredReturn: 16 / 15, npcSeedPrice: 30000, bonusCity: 'Fort Sterling',
         defaultSeedPrice: 29500, defaultProductPrice: 510,
-      },
-
-      // --- PASTURE ANIMALS ---
-      {
-        id: 'chicken', category: 'animals', tier: 3, name: 'Chickens', seedName: 'Baby Chickens',
-        seedId: 'T3_FARM_CHICKEN_BABY', grownId: 'T3_FARM_CHICKEN_GROWN', grownName: 'Chicken',
-        productId: 'T3_EGG', productName: 'Hen Eggs', favoriteFoodId: 'T3_WHEAT', favoriteFoodName: 'Wheat',
-        baseReturn: 3 / 5, wateredReturn: 7 / 5, npcSeedPrice: 5000, bonusCity: 'Fort Sterling',
-        defaultSeedPrice: 4900, defaultGrownPrice: 6800, defaultProductPrice: 520, defaultFeedPrice: 400,
-      },
-      {
-        id: 'goat', category: 'animals', tier: 4, name: 'Goats', seedName: 'Kid',
-        seedId: 'T4_FARM_GOAT_BABY', grownId: 'T4_FARM_GOAT_GROWN', grownName: 'Goat',
-        productId: 'T4_MILK', productName: "Goat's Milk", favoriteFoodId: 'T4_TURNIP', favoriteFoodName: 'Turnips',
-        baseReturn: 11 / 15, wateredReturn: 19 / 15, npcSeedPrice: 7500, bonusCity: 'Bridgewatch',
-        defaultSeedPrice: 7400, defaultGrownPrice: 7200, defaultProductPrice: 560, defaultFeedPrice: 410,
-      },
-      {
-        id: 'goose', category: 'animals', tier: 5, name: 'Geese', seedName: 'Gosling',
-        seedId: 'T5_FARM_GOOSE_BABY', grownId: 'T5_FARM_GOOSE_GROWN', grownName: 'Goose',
-        productId: 'T5_EGG', productName: 'Goose Eggs', favoriteFoodId: 'T5_CABBAGE', favoriteFoodName: 'Cabbage',
-        baseReturn: 4 / 5, wateredReturn: 6 / 5, npcSeedPrice: 10000, bonusCity: 'Lymhurst',
-        defaultSeedPrice: 9800, defaultGrownPrice: 7600, defaultProductPrice: 600, defaultFeedPrice: 420,
-      },
-      {
-        id: 'sheep', category: 'animals', tier: 6, name: 'Sheep', seedName: 'Lamb',
-        seedId: 'T6_FARM_SHEEP_BABY', grownId: 'T6_FARM_SHEEP_GROWN', grownName: 'Sheep',
-        productId: 'T6_MILK', productName: "Sheep's Milk", favoriteFoodId: 'T6_POTATO', favoriteFoodName: 'Potatoes',
-        baseReturn: 13 / 15, wateredReturn: 17 / 15, npcSeedPrice: 15000, bonusCity: 'Fort Sterling',
-        defaultSeedPrice: 14800, defaultGrownPrice: 8200, defaultProductPrice: 640, defaultFeedPrice: 430,
-      },
-      {
-        id: 'pig', category: 'animals', tier: 7, name: 'Pigs', seedName: 'Piglet',
-        seedId: 'T7_FARM_PIG_BABY', grownId: 'T7_FARM_PIG_GROWN', grownName: 'Pig',
-        productId: null, productName: null, favoriteFoodId: 'T7_CORN', favoriteFoodName: 'Corn',
-        baseReturn: 41 / 45, wateredReturn: 49 / 45, npcSeedPrice: 22500, bonusCity: 'Thetford',
-        defaultSeedPrice: 22000, defaultGrownPrice: 9200, defaultProductPrice: 0, defaultFeedPrice: 440,
-      },
-      {
-        id: 'cow', category: 'animals', tier: 8, name: 'Cows', seedName: 'Calf',
-        seedId: 'T8_FARM_COW_BABY', grownId: 'T8_FARM_COW_GROWN', grownName: 'Cow',
-        productId: 'T8_MILK', productName: "Cow's Milk", favoriteFoodId: 'T8_PUMPKIN', favoriteFoodName: 'Pumpkins',
-        baseReturn: 14 / 15, wateredReturn: 16 / 15, npcSeedPrice: 30000, bonusCity: 'Martlock',
-        defaultSeedPrice: 29500, defaultGrownPrice: 10500, defaultProductPrice: 720, defaultFeedPrice: 460,
       },
     ];
 
@@ -203,15 +160,32 @@
     }
 
     /**
-     * Yield per tile for crops, herbs, or animal produce (eggs/milk):
+     * Returns all cities that grant a +10% farming yield bonus for an item.
+     * - All Crops receive +10% in their Royal City AND in Brecilien.
+     * - Herbs receive +10% in their designated Royal City / Caerleon.
+     */
+    function getItemBonusCities(item) {
+      if (!item) return [];
+      const set = new Set();
+      if (item.bonusCity) set.add(item.bonusCity);
+      if (Array.isArray(item.bonusCities)) item.bonusCities.forEach((c) => set.add(c));
+      if (item.category === 'crops') set.add('Brecilien');
+      return Array.from(set);
+    }
+
+    function hasCityBonus(item, cityId) {
+      return getItemBonusCities(item).includes(cityId);
+    }
+
+    /**
+     * Yield per tile for crops & herbs:
      * - Base: 4.5 items/tile
      * - Premium: x2.0 -> 9.0 items/tile
      * - Matching Island City Biome Bonus: x1.10 (+10%) -> 9.9 items/tile with Premium (4.95 without)
      */
     function calculateYieldPerTile({ item, cityId, hasPremium = true }) {
       const base = BASE_YIELD_PER_TILE * (hasPremium ? 2.0 : 1.0);
-      const hasBonus = Boolean(item && item.bonusCity && cityId === item.bonusCity);
-      return hasBonus ? base * 1.10 : base;
+      return hasCityBonus(item, cityId) ? base * 1.10 : base;
     }
 
     function getMarketFeeRate({ hasPremium = true, orderType = 'sell_order', directTrade = false }) {
@@ -226,18 +200,9 @@
     }
 
     // -------------------------------------------------------------------------
-    // 3. FARMING CYCLE PROFIT SIMULATION
+    // 3. FARMING CYCLE PROFIT SIMULATION (CROPS & HERBS)
     // -------------------------------------------------------------------------
 
-    /**
-     * Simulates one full 22h harvest cycle (or 44h non-Premium animal growth).
-     *
-     * Supports:
-     * - Crops & Herbs: plant `totalTiles` seeds, water `wateredTiles` with Focus, harvest produce + settle net seed deficit/surplus.
-     * - Animals (`animalMode === 'grown'`): raise `totalTiles` babies, feed `9` favorite (or `18` generic) crops each,
-     *   nurture `wateredTiles` with Focus, sell grown animals + settle net baby deficit/surplus.
-     * - Animals (`animalMode === 'produce'`): keep grown animals alive, feed daily crops, harvest eggs/milk every 22h (no baby replacement or nurturing).
-     */
     function simulateFarming({
       itemId,
       plots = 5,
@@ -250,11 +215,7 @@
       spec = 100,
       seedPrice = 2000,
       productPrice = 380,
-      grownPrice = 0,
-      feedPrice = 400,
       useNpcCap = true,         // if true, buys replacement seeds from NPC merchant when cheaper than market + buy fee
-      animalMode = 'grown',     // 'grown' | 'produce' (only for category === 'animals')
-      useFavoriteFood = true,   // true -> 9 crops/animal; false -> 18 crops/animal
       marketFeeRate = 0.065,
       buyFeeRate = 0.025,
     }) {
@@ -263,34 +224,27 @@
       const safeExtra = Math.max(0, Math.floor(Number(extraTiles) || 0));
       const totalTiles = Math.max(1, safePlots * TILES_PER_PLOT + safeExtra);
 
-      const isAnimal = item.category === 'animals';
-      const effectiveAnimalMode = isAnimal && animalMode === 'produce' && item.productId ? 'produce' : 'grown';
-      const canUseFocus = !(isAnimal && effectiveAnimalMode === 'produce');
-
-      // Determine watered/nurtured tile count
       let activeWatered = 0;
-      if (canUseFocus) {
-        if (wateredTiles !== null && wateredTiles !== undefined) {
-          activeWatered = Math.min(Math.max(Math.floor(Number(wateredTiles) || 0), 0), totalTiles);
-        } else if (waterMode === 'all') {
-          activeWatered = totalTiles;
-        } else if (waterMode === 'self_sustain') {
-          // Since wateredReturn - 1 === 1 - baseReturn, watering 50% of tiles balances net seeds to ~0
-          activeWatered = Math.ceil(totalTiles / 2);
-        } else {
-          activeWatered = 0;
-        }
+      if (wateredTiles !== null && wateredTiles !== undefined) {
+        activeWatered = Math.min(Math.max(Math.floor(Number(wateredTiles) || 0), 0), totalTiles);
+      } else if (waterMode === 'all') {
+        activeWatered = totalTiles;
+      } else if (waterMode === 'self_sustain') {
+        activeWatered = Math.ceil(totalTiles / 2);
+      } else {
+        activeWatered = 0;
       }
       const unwateredTiles = totalTiles - activeWatered;
 
       const focusCostPerTile = calculateFarmingFocusCost({ mastery, spec });
       const totalFocusSpent = activeWatered * focusCostPerTile;
 
-      // Seed / Baby replacement & surplus
-      const hasBiomeBonus = Boolean(item.bonusCity && cityId === item.bonusCity);
+      const hasBiomeBonus = hasCityBonus(item, cityId);
       const yieldPerTile = calculateYieldPerTile({ item, cityId, hasPremium });
 
-      let expectedSeedsReturned = 0;
+      const expectedSeedsReturned = activeWatered * item.wateredReturn + unwateredTiles * item.baseReturn;
+      const netSeeds = expectedSeedsReturned - totalTiles;
+
       let seedDeficit = 0;
       let seedSurplus = 0;
       let effectiveSeedBuyPrice = Math.max(0, Number(seedPrice) || 0);
@@ -300,57 +254,30 @@
       let seedSurplusGross = 0;
       let seedSurplusTax = 0;
 
-      if (!(isAnimal && effectiveAnimalMode === 'produce')) {
-        expectedSeedsReturned = activeWatered * item.wateredReturn + unwateredTiles * item.baseReturn;
-        const netSeeds = expectedSeedsReturned - totalTiles;
-
-        if (netSeeds < -1e-9) {
-          seedDeficit = -netSeeds;
-          const marketUnitEffective = effectiveSeedBuyPrice * (1 + buyFeeRate);
-          if (useNpcCap && item.npcSeedPrice > 0 && item.npcSeedPrice < marketUnitEffective) {
-            effectiveSeedBuyPrice = item.npcSeedPrice;
-            boughtFromNpc = true;
-            seedBuyCost = seedDeficit * item.npcSeedPrice;
-            seedBuyFee = 0; // NPC vendor charges no Market buy-order setup fee
-          } else {
-            seedBuyCost = seedDeficit * effectiveSeedBuyPrice;
-            seedBuyFee = seedBuyCost * buyFeeRate;
-          }
-        } else if (netSeeds > 1e-9) {
-          seedSurplus = netSeeds;
-          seedSurplusGross = seedSurplus * Math.max(0, Number(seedPrice) || 0);
-          seedSurplusTax = seedSurplusGross * marketFeeRate;
+      if (netSeeds < -1e-9) {
+        seedDeficit = -netSeeds;
+        const marketUnitEffective = effectiveSeedBuyPrice * (1 + buyFeeRate);
+        if (useNpcCap && item.npcSeedPrice > 0 && item.npcSeedPrice < marketUnitEffective) {
+          effectiveSeedBuyPrice = item.npcSeedPrice;
+          boughtFromNpc = true;
+          seedBuyCost = seedDeficit * item.npcSeedPrice;
+          seedBuyFee = 0;
+        } else {
+          seedBuyCost = seedDeficit * effectiveSeedBuyPrice;
+          seedBuyFee = seedBuyCost * buyFeeRate;
         }
+      } else if (netSeeds > 1e-9) {
+        seedSurplus = netSeeds;
+        seedSurplusGross = seedSurplus * Math.max(0, Number(seedPrice) || 0);
+        seedSurplusTax = seedSurplusGross * marketFeeRate;
       }
 
-      // Animal feed cost
-      let feedUnitsPerTile = 0;
-      let totalFeedUnits = 0;
-      let feedCost = 0;
-      let feedBuyFee = 0;
-      if (isAnimal) {
-        feedUnitsPerTile = useFavoriteFood ? ANIMAL_FEED_FAVORITE : ANIMAL_FEED_GENERIC;
-        totalFeedUnits = totalTiles * feedUnitsPerTile;
-        feedCost = totalFeedUnits * Math.max(0, Number(feedPrice) || 0);
-        feedBuyFee = feedCost * buyFeeRate;
-      }
-
-      // Primary harvest output & revenue
-      let totalHarvest = 0;
-      let unitSellPrice = 0;
-      if (isAnimal && effectiveAnimalMode === 'grown') {
-        totalHarvest = totalTiles;
-        unitSellPrice = Math.max(0, Number(grownPrice) || 0);
-      } else {
-        totalHarvest = totalTiles * yieldPerTile;
-        unitSellPrice = Math.max(0, Number(productPrice) || 0);
-      }
-
+      const totalHarvest = totalTiles * yieldPerTile;
+      const unitSellPrice = Math.max(0, Number(productPrice) || 0);
       const harvestGrossRevenue = totalHarvest * unitSellPrice;
       const harvestTax = harvestGrossRevenue * marketFeeRate;
 
-      const totalBuyFees = seedBuyFee + feedBuyFee;
-      const totalExpense = seedBuyCost + feedCost + totalBuyFees;
+      const totalExpense = seedBuyCost + seedBuyFee;
       const grossRevenue = harvestGrossRevenue + seedSurplusGross;
       const totalMarketTax = harvestTax + seedSurplusTax;
       const netRevenue = grossRevenue - totalMarketTax;
@@ -360,37 +287,24 @@
       const profitPerTile = netProfit / totalTiles;
       const profitMargin = totalExpense > 0 ? (netProfit / totalExpense) * 100 : (netProfit > 0 ? 100 : 0);
 
-      // Focus efficiency metrics:
-      // 1) Overall S/FP (total netProfit / totalFocusSpent)
-      // 2) Marginal Watering S/FP (exact extra silver gained per Focus spent watering vs 0 watered tiles)
       const silverPerFocus = totalFocusSpent > 0 ? netProfit / totalFocusSpent : null;
 
       let marginalSilverPerFocus = null;
       if (totalFocusSpent > 0) {
-        const unwateredProfit =
-          (harvestGrossRevenue - harvestTax) -
-          (feedCost + feedBuyFee) -
-          (() => {
-            const unwateredDeficit = totalTiles * (1 - item.baseReturn);
-            const mktUnit = Math.max(0, Number(seedPrice) || 0) * (1 + buyFeeRate);
-            const unitCost = (useNpcCap && item.npcSeedPrice > 0 && item.npcSeedPrice < mktUnit)
-              ? item.npcSeedPrice
-              : mktUnit;
-            return unwateredDeficit * unitCost;
-          })();
+        const unwateredDeficit = totalTiles * (1 - item.baseReturn);
+        const mktUnit = Math.max(0, Number(seedPrice) || 0) * (1 + buyFeeRate);
+        const unitCost = (useNpcCap && item.npcSeedPrice > 0 && item.npcSeedPrice < mktUnit)
+          ? item.npcSeedPrice
+          : mktUnit;
+        const unwateredProfit = (harvestGrossRevenue - harvestTax) - (unwateredDeficit * unitCost);
         marginalSilverPerFocus = (netProfit - unwateredProfit) / totalFocusSpent;
       }
 
-      // Break-even unit sell price for primary harvest output
       const netCostAfterSeedSurplus = totalExpense - (seedSurplusGross - seedSurplusTax);
       const breakEvenPrice =
         totalHarvest > 0 && 1 - marketFeeRate > 0
           ? netCostAfterSeedSurplus / ((1 - marketFeeRate) * totalHarvest)
           : 0;
-
-      const growthHours = isAnimal && effectiveAnimalMode === 'grown'
-        ? (hasPremium ? 22 : 44)
-        : 22;
 
       return {
         item,
@@ -400,8 +314,7 @@
         unwateredTiles,
         hasBiomeBonus,
         yieldPerTile,
-        effectiveAnimalMode,
-        growthHours,
+        growthHours: 22,
         focusCostPerTile,
         totalFocusSpent,
         expectedSeedsReturned,
@@ -413,11 +326,7 @@
         seedBuyFee,
         seedSurplusGross,
         seedSurplusTax,
-        feedUnitsPerTile,
-        totalFeedUnits,
-        feedCost,
-        feedBuyFee,
-        totalBuyFees,
+        totalBuyFees: seedBuyFee,
         totalExpense,
         totalHarvest,
         unitSellPrice,
@@ -436,9 +345,6 @@
       };
     }
 
-    /**
-     * Calculates how many tiles can be watered/nurtured within a Focus budget (10k / 20k / 30k FP).
-     */
     function fitTilesToFocus({ focusBudget, mastery = 100, spec = 100 }) {
       const costPerTile = calculateFarmingFocusCost({ mastery, spec });
       if (costPerTile <= 0 || focusBudget <= 0) return 0;
@@ -453,13 +359,13 @@
       TILES_PER_PLOT,
       BASE_YIELD_PER_TILE,
       BASE_FOCUS_COST,
-      ANIMAL_FEED_FAVORITE,
-      ANIMAL_FEED_GENERIC,
       ISLAND_CITIES,
       CATEGORIES,
       ITEMS,
       calculateFarmingFocusCost,
       calculateYieldPerTile,
+      getItemBonusCities,
+      hasCityBonus,
       getMarketFeeRate,
       getBuyFeeRate,
       simulateFarming,

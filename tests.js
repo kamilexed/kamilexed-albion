@@ -543,7 +543,7 @@ assert(
 console.log('\n[11] Island Farming Rules & Profit Engine:');
 const F = globalThis.AlbionFarmingRules;
 
-assert(F.ITEMS.length === 21, 'All 21 farming items registered (8 Crops, 7 Herbs, 6 Animals)');
+assert(F.ITEMS.length === 15, 'All 15 farming items registered (8 Crops, 7 Herbs; Animals removed)');
 assert(
   F.ITEMS.every(i => Math.abs(i.npcSeedPrice * (1 - i.baseReturn) - 2000) < 0.01),
   'Exact Albion economic invariant: NPC Seed Price * (1 - BaseReturn) === 2,000 silver across all tiers'
@@ -597,43 +597,54 @@ assert(
   'NPC Seed Cap automatically switches to NPC merchant (2,000s, 0% fee) when market seed price is higher'
 );
 
-const goatGrownSim = F.simulateFarming({
-  itemId: 'goat',
-  plots: 5, // 45 goats
-  cityId: 'Bridgewatch',
+const herbSim = F.simulateFarming({
+  itemId: 'foxglove',
+  plots: 5, // 45 tiles
+  cityId: 'Martlock',
   hasPremium: true,
   waterMode: 'all',
-  animalMode: 'grown',
-  useFavoriteFood: true,
-  seedPrice: 7400,
-  grownPrice: 7200,
-  feedPrice: 400,
+  mastery: 100,
+  spec: 100,
+  seedPrice: 14800,
+  productPrice: 465,
   marketFeeRate: 0.065,
   buyFeeRate: 0.025,
 });
 assert(
-  goatGrownSim.totalFeedUnits === 45 * 9 && goatGrownSim.totalHarvest === 45 && goatGrownSim.seedSurplus > 0,
-  'Pasture Animals (Raise & Sell Grown) consume 9 favorite crops/animal, output grown animals, and yield surplus offspring when nurtured'
+  herbSim.hasBiomeBonus === true &&
+  Math.abs(herbSim.totalHarvest - 45 * 9.9) < 0.01 &&
+  herbSim.seedSurplus > 0,
+  'Herbs (Elusive Foxglove in Martlock) apply +10% biome yield and yield surplus seeds when watered'
 );
 
-const goatMilkSim = F.simulateFarming({
-  itemId: 'goat',
-  plots: 5, // 45 goats
-  cityId: 'Bridgewatch',
-  hasPremium: true,
-  animalMode: 'produce',
-  useFavoriteFood: false, // 18 generic crops
-  productPrice: 600,
-  feedPrice: 350,
-  marketFeeRate: 0.0, // Direct Trade 0%
-  buyFeeRate: 0.0,
+const npcCapOffSim = F.simulateFarming({
+  itemId: 'carrot',
+  plots: 5,
+  waterMode: 'none',
+  seedPrice: 2500,
+  productPrice: 400,
+  useNpcCap: false,
+  buyFeeRate: 0.025,
 });
 assert(
-  goatMilkSim.totalFeedUnits === 45 * 18 &&
-  goatMilkSim.totalFocusSpent === 0 &&
-  Math.abs(goatMilkSim.totalHarvest - 45 * 9.9) < 0.01 &&
-  goatMilkSim.totalMarketTax === 0,
-  'Pasture Animals (Daily Milk/Eggs) consume 18 non-favorite crops, use 0 focus, apply biome +10% yield, and respect Direct Trade 0% tax'
+  npcCapSim.netProfit > npcCapOffSim.netProfit,
+  'When unwatered and market seed > NPC vendor, NPC Seed Cap increases Net Profit by capping replacement cost'
+);
+
+const comfreyItem = F.ITEMS.find(i => i.id === 'comfrey');
+const pumpkinItem = F.ITEMS.find(i => i.id === 'pumpkin');
+const yarrowItem = F.ITEMS.find(i => i.id === 'yarrow');
+assert(
+  F.hasCityBonus(comfreyItem, 'Caerleon') && Math.abs(F.calculateYieldPerTile({ item: comfreyItem, cityId: 'Caerleon', hasPremium: true }) - 9.9) < 0.001,
+  'Caerleon grants +10% farming yield bonus to Brightleaf Comfrey (T3 Herb)'
+);
+assert(
+  F.hasCityBonus(pumpkinItem, 'Brecilien') && Math.abs(F.calculateYieldPerTile({ item: pumpkinItem, cityId: 'Brecilien', hasPremium: true }) - 9.9) < 0.001,
+  'Brecilien grants +10% farming yield bonus to all Crops (e.g. T8 Pumpkins)'
+);
+assert(
+  !F.hasCityBonus(yarrowItem, 'Brecilien') && Math.abs(F.calculateYieldPerTile({ item: yarrowItem, cityId: 'Brecilien', hasPremium: true }) - 9.0) < 0.001,
+  'Brecilien does not grant +10% bonus to Herbs (e.g. T8 Ghoul Yarrow stays 9.0/tile)'
 );
 
 const beFarm = F.simulateFarming({
