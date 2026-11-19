@@ -92,7 +92,7 @@
       { id: 'Bridgewatch', name: 'Bridgewatch', bonus: 'stone', isCity: true },
       { id: 'Martlock', name: 'Martlock', bonus: 'hide', isCity: true },
       { id: 'Island', name: 'Island', bonus: null, isCity: false },
-      { id: 'Custom', name: 'Custom RR', bonus: null, isCity: false },
+      { id: 'Custom', name: 'Custom Return Rate', bonus: null, isCity: false },
     ];
 
     // Tier requirements and verified base Item Values / Focus Costs
