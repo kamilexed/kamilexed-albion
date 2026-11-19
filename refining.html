@@ -302,7 +302,8 @@
       display: none;
       position: absolute;
       top: calc(100% + 6px);
-      right: 0;
+      left: 0;
+      right: auto;
       z-index: 500;
       background: var(--surface);
       border: 1.5px solid var(--border);
@@ -435,8 +436,8 @@
     }
 
     .btn-item {
-      flex: 1;
-      min-width: 64px;
+      flex: 1 1 auto;
+      min-width: fit-content;
       background: var(--surface-well);
       border: 1px solid var(--border-subtle);
       color: var(--text-muted);
@@ -445,7 +446,12 @@
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       text-align: center;
+      white-space: nowrap;
       transition: background 0.12s, border-color 0.12s;
     }
 
@@ -848,6 +854,10 @@
             <button id="orderTypeToggle" class="btn-toggle active" type="button" title="Sell Order (tax + 2.5% setup fee) vs Instant Sell (tax only)">
               Sell: <span style="color: var(--accent);">Order (6.5%)</span>
             </button>
+
+            <button id="directTradeToggle" class="btn-toggle" type="button" title="Direct player-to-player trade (0% market sales tax &amp; setup fee)">
+              Trade: <span style="color: var(--text-muted);">OFF</span>
+            </button>
           </div>
 
           <div class="controls-cluster">
@@ -963,7 +973,7 @@
             <div class="card-header">
               <h2 class="card-title">2. Options</h2>
               <div style="display: flex; align-items: center; gap: 6px;">
-                <span style="font-size: 11px; color: var(--text-muted);">Effective RRR:</span>
+                <span style="font-size: 11px; color: var(--text-muted);">Return Rate:</span>
                 <span id="rrrBadge" style="font-size: 12px; font-weight: 800; font-family: monospace; color: var(--success); background: var(--surface-well); border: 1px solid var(--success); padding: 2px 8px; border-radius: 6px;" data-tooltip="Resource Return Rate applied to every craft">
                   53.9%
                 </span>
@@ -973,10 +983,10 @@
             <div class="section-label">Refining Location</div>
             <div class="btn-group" id="cityGroup"></div>
 
-            <!-- Custom RRR Box -->
+            <!-- Custom RR Box -->
             <div id="customRRRBox" style="display: none; background: var(--surface-alt); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 9px 12px; margin-bottom: 12px;">
               <div class="options-center-row" style="font-size: 12px;">
-                <span style="color: var(--text-muted); font-weight: 600;">Custom Hideout / Zone RRR (%):</span>
+                <span style="color: var(--text-muted); font-weight: 600;">Custom RR (%):</span>
                 <input type="number" id="customRRRInput" min="0" max="90" step="0.1" value="53.9" class="inline-input" style="width: 80px; color: var(--success);">
               </div>
             </div>
@@ -1321,6 +1331,7 @@
       let hasPremium = true;
       let buyOrderType = 'buy_order';
       let orderType = 'sell_order';
+      let directTrade = false;
       let useHeart = false;
       let isRecursive = false;
       let focusTiers = { 3: false, 4: true, 5: false, 6: false, 7: false, 8: false };
@@ -1383,6 +1394,7 @@
       const premiumToggle = document.getElementById('premiumToggle');
       const buyOrderToggle = document.getElementById('buyOrderToggle');
       const orderTypeToggle = document.getElementById('orderTypeToggle');
+      const directTradeToggle = document.getElementById('directTradeToggle');
       const fetchAllPricesBtn = document.getElementById('fetchAllPricesBtn');
       const resourceGroup = document.getElementById('resourceGroup');
       const tierGroup = document.getElementById('tierGroup');
@@ -1462,7 +1474,7 @@
       const SESSION_STORAGE_KEY = 'ALBION_REFINING_SESSION_V1';
 
       function syncControlsUI() {
-        const sellTaxPct = (R.getMarketFeeRate({ hasPremium, orderType }) * 100).toFixed(1).replace(/\.0$/, '');
+        const sellTaxPct = (R.getMarketFeeRate({ hasPremium, orderType, directTrade }) * 100).toFixed(1).replace(/\.0$/, '');
         const buyTaxPct = (R.getBuyFeeRate({ buyOrderType }) * 100).toFixed(1).replace(/\.0$/, '');
 
         premiumToggle.className = 'btn-toggle' + (hasPremium ? ' active' : '');
@@ -1471,8 +1483,14 @@
         buyOrderToggle.className = 'btn-toggle' + (buyOrderType === 'buy_order' ? ' active' : '');
         buyOrderToggle.innerHTML = `Buy: <span style="color: ${buyOrderType === 'buy_order' ? 'var(--accent)' : 'var(--success)'};">${buyOrderType === 'buy_order' ? `Order (${buyTaxPct}%)` : `Instant (${buyTaxPct}%)`}</span>`;
 
-        orderTypeToggle.className = 'btn-toggle' + (orderType === 'sell_order' ? ' active' : '');
-        orderTypeToggle.innerHTML = `Sell: <span style="color: var(--accent);">${orderType === 'sell_order' ? `Order (${sellTaxPct}%)` : `Instant (${sellTaxPct}%)`}</span>`;
+        orderTypeToggle.disabled = directTrade;
+        orderTypeToggle.className = 'btn-toggle' + (!directTrade && orderType === 'sell_order' ? ' active' : '');
+        orderTypeToggle.innerHTML = directTrade
+          ? `Sell: <span style="color: var(--text-muted);">Trade (0%)</span>`
+          : `Sell: <span style="color: var(--accent);">${orderType === 'sell_order' ? `Order (${sellTaxPct}%)` : `Instant (${sellTaxPct}%)`}</span>`;
+
+        directTradeToggle.className = 'btn-toggle' + (directTrade ? ' active' : '');
+        directTradeToggle.innerHTML = `Trade: <span style="color: ${directTrade ? 'var(--success)' : 'var(--text-muted)'};">${directTrade ? 'ON (0%)' : 'OFF'}</span>`;
 
         compoundToggle.className = 'btn-toggle' + (compound ? ' active' : '');
         compoundToggle.innerHTML = `Compounding: <span style="color: ${compound ? 'var(--success)' : 'var(--text-muted)'};">${compound ? 'ON' : 'OFF'}</span>`;
@@ -1505,6 +1523,7 @@
             hasPremium,
             buyOrderType,
             orderType,
+            directTrade,
             useHeart,
             isRecursive,
             focusTiers,
@@ -1545,6 +1564,7 @@
           if (typeof s.hasPremium === 'boolean') hasPremium = s.hasPremium;
           if (s.buyOrderType === 'buy_order' || s.buyOrderType === 'instant_buy') buyOrderType = s.buyOrderType;
           if (s.orderType === 'sell_order' || s.orderType === 'instant_sell') orderType = s.orderType;
+          if (typeof s.directTrade === 'boolean') directTrade = s.directTrade;
           if (typeof s.useHeart === 'boolean') useHeart = s.useHeart;
           if (typeof s.isRecursive === 'boolean') isRecursive = s.isRecursive;
           if (s.focusTiers && typeof s.focusTiers === 'object') focusTiers = { ...focusTiers, ...s.focusTiers };
@@ -1749,7 +1769,14 @@
       };
 
       orderTypeToggle.onclick = () => {
+        if (directTrade) return;
         orderType = orderType === 'sell_order' ? 'instant_sell' : 'sell_order';
+        syncControlsUI();
+        render();
+      };
+
+      directTradeToggle.onclick = () => {
+        directTrade = !directTrade;
         syncControlsUI();
         render();
       };
@@ -2331,7 +2358,7 @@
           specs,
         });
 
-        const marketFeeRate = R.getMarketFeeRate({ hasPremium, orderType });
+        const marketFeeRate = R.getMarketFeeRate({ hasPremium, orderType, directTrade });
         const buyFeeRate = R.getBuyFeeRate({ buyOrderType });
 
         // Labels

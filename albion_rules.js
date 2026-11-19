@@ -91,8 +91,8 @@
       { id: 'Lymhurst', name: 'Lymhurst', bonus: 'fiber', isCity: true },
       { id: 'Bridgewatch', name: 'Bridgewatch', bonus: 'stone', isCity: true },
       { id: 'Martlock', name: 'Martlock', bonus: 'hide', isCity: true },
-      { id: 'Island', name: 'Player Island / Private', bonus: null, isCity: false },
-      { id: 'Custom', name: 'Hideout / Custom RRR', bonus: null, isCity: false },
+      { id: 'Island', name: 'Island', bonus: null, isCity: false },
+      { id: 'Custom', name: 'Custom RR', bonus: null, isCity: false },
     ];
 
     // Tier requirements and verified base Item Values / Focus Costs
@@ -256,10 +256,12 @@
     /**
      * Market Fee rate calculation.
      * verified: Albion Market Rules:
+     * - Direct Trade (player-to-player outside the Market): 0% tax & 0% setup fee.
      * - Market Tax: 4% with Premium, 8% without Premium.
-     * - Listing / Setup Fee: 2.5% for Sell Orders, 0% for Direct/Instant Sell.
+     * - Listing / Setup Fee: 2.5% for Sell Orders, 0% for Instant Sell.
      */
-    function getMarketFeeRate({ hasPremium = true, orderType = 'sell_order' }) {
+    function getMarketFeeRate({ hasPremium = true, orderType = 'sell_order', directTrade = false }) {
+      if (directTrade || orderType === 'direct_trade') return 0.0;
       const baseTax = hasPremium ? 0.04 : 0.08;
       const setupFee = orderType === 'sell_order' ? 0.025 : 0.0;
       return baseTax + setupFee;

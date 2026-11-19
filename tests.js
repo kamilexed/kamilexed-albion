@@ -111,6 +111,8 @@ assert(Math.abs(taxPremInstant - 0.04) < 0.001, 'Premium Instant Sell fee is 4.0
 
 const taxNoPremSellOrder = getMarketFeeRate({ hasPremium: false, orderType: 'sell_order' });
 assert(Math.abs(taxNoPremSellOrder - 0.105) < 0.001, 'Non-Premium Sell Order fee is 10.5% (8% tax + 2.5% setup)');
+assert(getMarketFeeRate({ hasPremium: true, orderType: 'sell_order', directTrade: true }) === 0.0, 'Direct Trade removes all sales tax and setup fees (0%)');
+assert(getMarketFeeRate({ hasPremium: false, orderType: 'instant_sell', directTrade: true }) === 0.0, 'Direct Trade is 0% even without Premium');
 
 // 5. Lower-Tier Bar Return & Compounding Conservation Tests
 console.log('\n[5] Lower-Tier RRR Returns & Compounding Conservation:');
