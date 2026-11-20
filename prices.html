@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Albion Online — Global Item Prices</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+  <script src="albion_rules.js?v=20261119-1"></script>
+  <script src="albion_farming_rules.js?v=20261119-2"></script>
+  <script src="albion_crafting_rules.js?v=20261120-1"></script>
+  <script src="albion_api.js?v=20261119-2"></script>
+  <script src="albion_price_store.js?v=20261120-3"></script>
+  <style>
+    :root {
+      --bg: #000000;
+      --surface: #141312;
+      --surface-alt: #1c1a17;
+      --surface-well: #0c0b0a;
+      --surface-hover: #26221e;
+      --border: #d4751c;
+      --border-subtle: #383028;
+      --text: #f5f5f5;
+      --text-muted: #a8a29e;
+      --accent: #e07b1d;
+      --accent-active-bg: #3b2410;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #eab308;
+      --cyan: #38bdf8;
+      --purple: #c084fc;
+      --gold: #facc15;
+
+      /* Albion Tier Colors */
+      --t1-color: #d4d4d8;
+      --t2-color: #86efac;
+      --t3-color: #86efac;
+      --t4-color: #60a5fa;
+      --t5-color: #f87171;
+      --t6-color: #fb923c;
+      --t7-color: #facc15;
+      --t8-color: #ffffff;
+
+      /* Albion Enchantment Colors */
+      --ench-color-0: #d4d4d8;
+      --ench-color-1: #4ade80;
+      --ench-color-2: #60a5fa;
+      --ench-color-3: #c084fc;
+      --ench-color-4: #facc15;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) var(--surface-well);
+    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--surface-well); border-radius: 6px; }
+    ::-webkit-scrollbar-thumb {
+      background: #6b3b0e;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border); }
+    ::-webkit-scrollbar-corner { background: var(--bg); }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.45;
+      min-height: 100vh;
+    }
+
+    /* Full-Height Fixed Left Side Menu */
+    .left-sidebar {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      bottom: 12px;
+      width: 64px;
+      z-index: 300;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 8px;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.18s ease;
+      overflow: hidden;
+    }
+
+    .left-sidebar.expanded {
+      width: 200px;
+      padding: 12px 14px;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+      border-bottom: 1.5px solid var(--border);
+      min-height: 32px;
+    }
+
+    .left-sidebar.expanded .sidebar-header {
+      justify-content: space-between;
+    }
+
+    .sidebar-title {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--accent);
+      white-space: nowrap;
+      display: none;
+    }
+
+    .left-sidebar.expanded .sidebar-title {
+      display: block;
+    }
+
+    .sidebar-toggle-btn {
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      width: 38px;
+      height: 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .sidebar-toggle-btn:hover {
+      background: var(--surface-hover);
+      border-color: var(--border);
+    }
+
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 6px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--text-muted);
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      line-height: 1;
+    }
+    .sidebar-link:hover {
+      background: var(--surface-hover);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    .sidebar-link.active {
+      background: var(--accent-active-bg);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    .sidebar-link-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .sidebar-link-label {
+      display: none;
+      line-height: 1;
+    }
+    .left-sidebar.expanded .sidebar-link-label {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    /* Main Workspace Container */
+    .main-shell {
+      margin-left: 88px;
+      padding: 0 12px 28px 4px;
+      transition: margin-left 0.18s ease;
+    }
+    body.sidebar-expanded .main-shell {
+      margin-left: 224px;
+    }
+
+    @media (max-width: 760px) {
+      .left-sidebar, .left-sidebar.expanded {
+        position: static;
+        width: 100%;
+        margin: 10px 0 0 0;
+      }
+      .main-shell, body.sidebar-expanded .main-shell {
+        margin-left: 0;
+        padding: 0 10px 24px 10px;
+      }
+      .left-sidebar .sidebar-title,
+      .left-sidebar .sidebar-link-label {
+        display: inline-flex;
+      }
+    }
+
+    /* Sticky Top Island (Always 2 Button Rows Tall) */
+    .sticky-top-wrapper {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: var(--bg);
+      padding: 12px 0 10px 0;
+    }
+
+    .top-island {
+      width: 100%;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .top-island-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .controls-cluster {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pill-select, .btn-toggle {
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      padding: 6px 11px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s;
+    }
+
+    .pill-select:hover, .btn-toggle:hover {
+      background: var(--surface-hover);
+      border-color: var(--border);
+    }
+
+    .btn-toggle.active {
+      background: var(--accent-active-bg);
+      border-color: var(--border);
+      color: #ffffff;
+    }
+
+    .btn-action {
+      background: var(--accent);
+      color: #000000;
+      border: 1px solid var(--border);
+      padding: 6px 13px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .btn-action:hover { background: #f08a24; }
+    .btn-action:disabled { opacity: 0.6; cursor: wait; }
+
+    .btn-secondary {
+      background: var(--surface-well);
+      color: var(--text);
+      border: 1px solid var(--border-subtle);
+    }
+    .btn-secondary:hover { background: var(--surface-hover); border-color: var(--border); }
+
+    .search-input {
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      padding: 6px 11px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      outline: none;
+      min-width: 210px;
+    }
+    .search-input:focus { border-color: var(--border); }
+
+    /* Cards & Subfilters */
+    .content-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 4px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+
+    .card-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .btn-item {
+      flex: 1 1 auto;
+      min-width: fit-content;
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s;
+    }
+
+    .btn-item:hover {
+      background: var(--surface-hover);
+      border-color: var(--border);
+    }
+
+    .btn-item.active {
+      background: var(--accent-active-bg);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    /* Tier & Enchantment Colors */
+    .tier-color-1 { color: var(--t1-color) !important; }
+    .tier-color-2, .tier-color-3 { color: var(--t2-color) !important; }
+    .tier-color-4 { color: var(--t4-color) !important; }
+    .tier-color-5 { color: var(--t5-color) !important; }
+    .tier-color-6 { color: var(--t6-color) !important; }
+    .tier-color-7 { color: var(--t7-color) !important; }
+    .tier-color-8 { color: var(--t8-color) !important; }
+
+    .ench-color-0 { color: var(--ench-color-0) !important; }
+    .ench-color-1 { color: var(--ench-color-1) !important; }
+    .ench-color-2 { color: var(--ench-color-2) !important; }
+    .ench-color-3 { color: var(--ench-color-3) !important; }
+    .ench-color-4 { color: var(--ench-color-4) !important; }
+
+    /* Price Table */
+    .prices-table-wrap {
+      overflow-x: auto;
+    }
+
+    .prices-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      font-family: monospace;
+    }
+
+    .prices-table th {
+      text-align: left;
+      padding: 8px 10px;
+      color: var(--text-muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      border-bottom: 1.5px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .prices-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: middle;
+    }
+
+    .prices-table tr:last-child td { border-bottom: none; }
+    .prices-table tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+    .price-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .item-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 6px;
+      background: #000000;
+      border: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+
+    .price-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .price-item-name {
+      font-size: 11px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .price-input-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .price-input {
+      width: 112px;
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      padding: 5px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: monospace;
+      font-weight: 700;
+      outline: none;
+    }
+    .price-input:focus { border-color: var(--border); }
+
+    .price-age {
+      font-size: 10px;
+      font-family: monospace;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--surface-well);
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      transition: background 0.12s;
+    }
+    .price-age:hover {
+      background: var(--surface-hover);
+      text-decoration: underline;
+    }
+    .price-age:disabled { cursor: wait; opacity: 0.6; }
+    .age-fresh { color: var(--success); border-color: var(--success); }
+    .age-moderate { color: var(--cyan); border-color: var(--cyan); }
+    .age-aging { color: var(--warning); border-color: var(--warning); }
+    .age-stale { color: var(--danger); border-color: var(--danger); }
+
+    .tier-badge {
+      font-weight: 800;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .hint-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Full-Height Left Side Menu (Top to Bottom) -->
+  <aside id="leftSidebar" class="left-sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Tools</span>
+      <button id="sidebarToggleBtn" class="sidebar-toggle-btn" type="button" title="Expand/Collapse Menu">
+        ☰
+      </button>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="refining.html" class="sidebar-link" title="Refining Calculator">
+        <span class="sidebar-link-icon">🔨</span>
+        <span class="sidebar-link-label">Refining</span>
+      </a>
+      <a href="farming.html" class="sidebar-link" title="Farming Calculator">
+        <span class="sidebar-link-icon">🌱</span>
+        <span class="sidebar-link-label">Farming</span>
+      </a>
+      <a href="crafting.html" class="sidebar-link" title="Crafting Calculator">
+        <span class="sidebar-link-icon">⚔️</span>
+        <span class="sidebar-link-label">Crafting</span>
+      </a>
+      <a href="prices.html" class="sidebar-link active" title="Global Item Prices">
+        <span class="sidebar-link-icon">💰</span>
+        <span class="sidebar-link-label">Prices</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Main Workspace Container -->
+  <div class="main-shell">
+
+    <!-- Sticky Top Island (Always 2 Button Rows Tall) -->
+    <div class="sticky-top-wrapper">
+      <header class="top-island">
+        <div class="top-island-row">
+          <div class="controls-cluster" id="mainTabGroup">
+            <button type="button" class="btn-toggle active" data-tab="resources">Raw &amp; Refined</button>
+            <button type="button" class="btn-toggle" data-tab="hearts">Faction Hearts</button>
+            <button type="button" class="btn-toggle" data-tab="journals">Crafting Journals</button>
+            <button type="button" class="btn-toggle" data-tab="farming">Farming</button>
+            <button type="button" class="btn-toggle" data-tab="equipment">Equipment &amp; Artifacts</button>
+          </div>
+
+          <div class="controls-cluster">
+            <select id="citySelect" class="pill-select" title="Market city used when fetching live Europe AODP prices">
+              <option value="">All Royal Cities (EU)</option>
+              <option value="Thetford">Thetford (EU)</option>
+              <option value="Fort Sterling">Fort Sterling (EU)</option>
+              <option value="Lymhurst">Lymhurst (EU)</option>
+              <option value="Bridgewatch">Bridgewatch (EU)</option>
+              <option value="Martlock">Martlock (EU)</option>
+              <option value="Caerleon">Caerleon (EU)</option>
+              <option value="Brecilien">Brecilien (EU)</option>
+            </select>
+
+            <button id="fetchVisibleBtn" class="btn-action" type="button">
+              Fetch Visible (EU)
+            </button>
+          </div>
+        </div>
+
+        <div class="top-island-row">
+          <div class="controls-cluster">
+            <input type="text" id="searchInput" class="search-input" placeholder="Filter by item name or ID...">
+            <select id="tierFilterSelect" class="pill-select" title="Filter items by Tier">
+              <option value="all">All Tiers</option>
+              <option value="1">Tier 1</option>
+              <option value="2">Tier 2</option>
+              <option value="3">Tier 3</option>
+              <option value="4">Tier 4</option>
+              <option value="5">Tier 5</option>
+              <option value="6">Tier 6</option>
+              <option value="7">Tier 7</option>
+              <option value="8">Tier 8</option>
+            </select>
+            <select id="tierSortSelect" class="pill-select" title="Sort items by Tier">
+              <option value="asc">Sort: Tier (Low → High)</option>
+              <option value="desc">Sort: Tier (High → Low)</option>
+              <option value="default">Sort: Item / Category</option>
+            </select>
+            <span id="savedCountBadge" style="font-size: 11px; color: var(--success); font-family: monospace; font-weight: 700;">
+              0 Prices Saved · Synced across all calculators
+            </span>
+          </div>
+
+          <div class="controls-cluster">
+            <button id="clearPricesBtn" class="btn-action btn-secondary" type="button" style="color: var(--danger);">
+              Reset Saved Prices
+            </button>
+          </div>
+        </div>
+      </header>
+    </div>
+
+    <!-- Main Price Editor Content -->
+    <div class="content-stack">
+
+      <!-- Sub-Filter Card (Context-sensitive for Resources / Equipment) -->
+      <section id="subFilterCard" class="card" style="padding: 14px 18px;">
+        <div id="subFilterBody"></div>
+      </section>
+
+      <!-- Active Price Table Card -->
+      <section class="card">
+        <div class="card-header">
+          <h2 id="tableSectionTitle" class="card-title">Raw &amp; Refined Resource Prices</h2>
+          <span id="tableRowCount" style="font-size: 11px; color: var(--text-muted); font-family: monospace;">
+            0 items
+          </span>
+        </div>
+
+        <div class="prices-table-wrap">
+          <table class="prices-table">
+            <thead id="pricesTableHead"></thead>
+            <tbody id="pricesTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const R = window.AlbionRules;
+      const F = window.AlbionFarmingRules;
+      const C = window.AlbionCraftingRules;
+      const API = window.AlbionApi;
+      const PS = window.AlbionPriceStore;
+      const SERVER = 'europe';
+      const UI_STATE_KEY = 'ALBION_PRICES_PAGE_STATE_V1';
+
+      // State
+      let activeTab = 'resources'; // 'resources' | 'hearts' | 'journals' | 'farming' | 'equipment'
+      let selectedResourceId = 'ore';
+      let selectedEquipStation = 'warrior';
+      let selectedEquipTreeId = 'swords';
+      let selectedEquipEnchant = 0;
+      let selectedCity = '';
+      let searchQuery = '';
+      let tierFilter = 'all'; // 'all' | '1'..'8'
+      let tierSort = 'asc';   // 'asc' | 'desc' | 'default'
+
+      // Baseline defaults (matching refining, farming, and crafting pages)
+      const BASE_RAW_CURVE = {
+        2: [12], 3: [25],
+        4: [50, 115, 290, 740, 2100],
+        5: [140, 350, 900, 2400, 7200],
+        6: [400, 1050, 2750, 7000, 21000],
+        7: [1200, 3100, 8200, 21500, 65000],
+        8: [3800, 9600, 25500, 68000, 205000],
+      };
+      const BASE_REFINED_CURVE = {
+        2: [18], 3: [42],
+        4: [140, 280, 680, 1750, 4800],
+        5: [460, 1100, 2850, 7400, 22000],
+        6: [1650, 4300, 11000, 28500, 86000],
+        7: [6500, 17000, 45000, 118000, 350000],
+        8: [24000, 61000, 162000, 425000, 1280000],
+      };
+      const BASE_MAT_EST = { 4: 320, 5: 950, 6: 2600, 7: 6800, 8: 18500 };
+      const ENCH_MULT = { 0: 1, 1: 2.1, 2: 4.5, 3: 11.0, 4: 28.0 };
+      const ARTIFACT_EST = { 4: 4500, 5: 14000, 6: 42000, 7: 125000, 8: 340000 };
+      const EMPTY_JOURNAL_EST = { 4: 3600, 5: 7200, 6: 14400, 7: 28800, 8: 57600 };
+      const FULL_JOURNAL_EST = { 4: 11500, 5: 24500, 6: 54000, 7: 118000, 8: 255000 };
+
+      const defaultPrices = new Map();
+      function seedDefaults() {
+        // Refining Raw, Refined & Faction Hearts
+        R.RESOURCES.forEach(res => {
+          if (res.heartId) defaultPrices.set(res.heartId, 40000);
+          [2, 3, 4, 5, 6, 7, 8].forEach(t => {
+            const enchs = (t <= 3 || res.id === 'stone') ? [0] : [0, 1, 2, 3, 4];
+            enchs.forEach(e => {
+              defaultPrices.set(R.getItemId(res.rawPrefix, t, e), BASE_RAW_CURVE[t][e]);
+              defaultPrices.set(R.getItemId(res.refinedPrefix, t, e), BASE_REFINED_CURVE[t][e]);
+            });
+          });
+        });
+
+        // Farming Seeds & Products
+        F.ITEMS.forEach(item => {
+          if (item.seedId) defaultPrices.set(item.seedId, item.defaultSeedPrice);
+          if (item.productId) defaultPrices.set(item.productId, item.defaultProductPrice);
+        });
+
+        // Crafting Journals
+        C.CATEGORIES.forEach(cat => {
+          for (let t = 4; t <= 8; t++) {
+            const jIds = C.getJournalItemIds(cat.id, t);
+            defaultPrices.set(jIds.emptyId, EMPTY_JOURNAL_EST[t]);
+            defaultPrices.set(jIds.fullId, FULL_JOURNAL_EST[t]);
+          }
+        });
+
+        // Equipment & Artifacts
+        C.ITEMS.forEach(item => {
+          const totalMats = C.getTotalMaterialsPerCraft(item);
+          for (let t = 4; t <= 8; t++) {
+            if (item.artifactCode) {
+              defaultPrices.set(C.getArtifactItemId(item, t), ARTIFACT_EST[t]);
+            }
+            const maxE = item.supportsEnchant === false ? 0 : 4;
+            for (let e = 0; e <= maxE; e++) {
+              const id = C.getCraftedItemId(item, t, e);
+              const matCost = totalMats * BASE_MAT_EST[t] * ENCH_MULT[e];
+              const artCost = item.artifactCode ? ARTIFACT_EST[t] : 0;
+              defaultPrices.set(id, Math.round(matCost * 0.92 + artCost * 1.1));
+            }
+          }
+        });
+      }
+      seedDefaults();
+
+      // Working price map = defaults + global saved prices
+      const priceMap = new Map();
+      function reloadPriceMap() {
+        priceMap.clear();
+        defaultPrices.forEach((val, id) => {
+          priceMap.set(id, { price: val, age: { text: 'Est.', category: 'moderate' } });
+        });
+        PS.applyToMap(priceMap);
+      }
+
+      // DOM References
+      const leftSidebar = document.getElementById('leftSidebar');
+      const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+      const mainTabGroup = document.getElementById('mainTabGroup');
+      const citySelect = document.getElementById('citySelect');
+      const fetchVisibleBtn = document.getElementById('fetchVisibleBtn');
+      const searchInput = document.getElementById('searchInput');
+      const tierFilterSelect = document.getElementById('tierFilterSelect');
+      const tierSortSelect = document.getElementById('tierSortSelect');
+      const savedCountBadge = document.getElementById('savedCountBadge');
+      const clearPricesBtn = document.getElementById('clearPricesBtn');
+      const subFilterCard = document.getElementById('subFilterCard');
+      const subFilterBody = document.getElementById('subFilterBody');
+      const tableSectionTitle = document.getElementById('tableSectionTitle');
+      const tableRowCount = document.getElementById('tableRowCount');
+      const pricesTableHead = document.getElementById('pricesTableHead');
+      const pricesTableBody = document.getElementById('pricesTableBody');
+
+      let currentVisibleIds = [];
+
+      function saveUiState() {
+        try {
+          localStorage.setItem(UI_STATE_KEY, JSON.stringify({
+            activeTab,
+            selectedResourceId,
+            selectedEquipStation,
+            selectedEquipTreeId,
+            selectedEquipEnchant,
+            selectedCity,
+            tierFilter,
+            tierSort,
+            sidebarExpanded: leftSidebar.classList.contains('expanded'),
+          }));
+        } catch (e) {}
+      }
+
+      function loadUiState() {
+        try {
+          const raw = localStorage.getItem(UI_STATE_KEY);
+          if (!raw) return;
+          const s = JSON.parse(raw);
+          if (['resources', 'hearts', 'journals', 'farming', 'equipment'].includes(s.activeTab)) activeTab = s.activeTab;
+          if (R.RESOURCES.some(r => r.id === s.selectedResourceId)) selectedResourceId = s.selectedResourceId;
+          if (C.CATEGORIES.some(c => c.id === s.selectedEquipStation)) selectedEquipStation = s.selectedEquipStation;
+          if (C.TREES.some(t => t.id === s.selectedEquipTreeId)) selectedEquipTreeId = s.selectedEquipTreeId;
+          if (typeof s.selectedEquipEnchant === 'number' && s.selectedEquipEnchant >= 0 && s.selectedEquipEnchant <= 4) {
+            selectedEquipEnchant = s.selectedEquipEnchant;
+          }
+          if (typeof s.selectedCity === 'string') {
+            selectedCity = s.selectedCity;
+            citySelect.value = selectedCity;
+          }
+          if (typeof s.tierFilter === 'string') {
+            tierFilter = s.tierFilter;
+            tierFilterSelect.value = tierFilter;
+          }
+          if (['asc', 'desc', 'default'].includes(s.tierSort)) {
+            tierSort = s.tierSort;
+            tierSortSelect.value = tierSort;
+          }
+          if (typeof s.sidebarExpanded === 'boolean') {
+            leftSidebar.classList.toggle('expanded', s.sidebarExpanded);
+            document.body.classList.toggle('sidebar-expanded', s.sidebarExpanded);
+            sidebarToggleBtn.innerText = s.sidebarExpanded ? '✕' : '☰';
+          }
+        } catch (e) {}
+      }
+
+      sidebarToggleBtn.onclick = () => {
+        const expanded = leftSidebar.classList.toggle('expanded');
+        document.body.classList.toggle('sidebar-expanded', expanded);
+        sidebarToggleBtn.innerText = expanded ? '✕' : '☰';
+        saveUiState();
+      };
+
+      function bindNonNegativeInput(el) {
+        el.min = '0';
+        el.addEventListener('keydown', (ev) => {
+          if (ev.key === '-' || ev.key === 'e' || ev.key === 'E' || ev.key === '+') ev.preventDefault();
+        });
+        el.addEventListener('blur', () => {
+          const v = parseFloat(el.value);
+          if (Number.isNaN(v) || v < 0) el.value = 0;
+        });
+      }
+
+      function getPriceEntry(itemId) {
+        return priceMap.get(itemId) || { price: 0, age: { text: 'Manual', category: 'stale' } };
+      }
+
+      function updateSavedBadge() {
+        const count = PS.countSaved();
+        savedCountBadge.innerText = `${count.toLocaleString()} Prices Saved · Synced across Refining, Farming & Crafting`;
+      }
+
+      function setGlobalPrice(itemId, price, age = { text: 'Manual', category: 'stale' }) {
+        const clean = Math.max(0, parseInt(price) || 0);
+        priceMap.set(itemId, { price: clean, age });
+        PS.setPrice(itemId, clean, age);
+        updateSavedBadge();
+      }
+
+      function formatTierEnchHtml(tier, enchant) {
+        return `<span class="tier-color-${tier}">T${tier}</span><span class="ench-color-${enchant}">.${enchant}</span>`;
+      }
+
+      async function refreshSinglePrice(itemId, badgeEl, inputEl) {
+        if (!itemId) return;
+        const orig = badgeEl.innerText;
+        badgeEl.innerText = '⏳...';
+        badgeEl.disabled = true;
+
+        try {
+          const res = await API.fetchPrices({
+            server: SERVER,
+            itemIds: [itemId],
+            locations: selectedCity,
+            forceRefresh: true,
+          });
+          if (res.data && res.data.length > 0) {
+            let best = null;
+            res.data.forEach(entry => {
+              const p = entry.sell_price_min > 0 ? entry.sell_price_min : entry.buy_price_max;
+              if (p > 0 && (!best || p < (best.sell_price_min || best.buy_price_max))) best = entry;
+            });
+            if (best) {
+              const p = best.sell_price_min > 0 ? best.sell_price_min : best.buy_price_max;
+              const age = API.formatPriceAge(best.sell_price_min_date);
+              setGlobalPrice(itemId, p, age);
+              if (inputEl) inputEl.value = p;
+              badgeEl.innerText = age.text;
+              badgeEl.className = 'price-age age-' + age.category;
+            } else {
+              badgeEl.innerText = 'No data';
+              setTimeout(() => { badgeEl.innerText = orig; }, 1200);
+            }
+          } else {
+            badgeEl.innerText = 'No data';
+            setTimeout(() => { badgeEl.innerText = orig; }, 1200);
+          }
+        } catch (err) {
+          console.warn('Single fetch error:', err);
+          badgeEl.innerText = orig;
+        } finally {
+          badgeEl.disabled = false;
+        }
+      }
+
+      function buildPriceCell({ itemId, label, subHint = '', inputColor = 'var(--text)', borderColor = '' }) {
+        const td = document.createElement('td');
+        if (!itemId) {
+          td.innerHTML = `<span style="color: var(--text-muted); font-size: 11px;">—</span>`;
+          return td;
+        }
+        currentVisibleIds.push(itemId);
+        const entry = getPriceEntry(itemId);
+
+        const wrap = document.createElement('div');
+        wrap.className = 'price-cell';
+
+        const img = document.createElement('img');
+        img.className = 'item-icon';
+        img.src = C.getRenderUrl(itemId, 1, 48);
+        img.alt = label;
+        if (borderColor) img.style.borderColor = borderColor;
+
+        const col = document.createElement('div');
+        col.className = 'price-input-group';
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'price-item-name';
+        nameEl.innerHTML = label + (subHint ? ` <span class="hint-sub">(${subHint})</span>` : '');
+
+        const row = document.createElement('div');
+        row.className = 'price-input-row';
+
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.className = 'price-input';
+        input.value = entry.price;
+        input.style.color = inputColor;
+        bindNonNegativeInput(input);
+
+        const badge = document.createElement('button');
+        badge.type = 'button';
+        badge.className = `price-age age-${entry.age.category}`;
+        badge.title = `Click to fetch live Europe AODP price for ${itemId}`;
+        badge.innerText = entry.age.text;
+
+        const commitInput = (e) => {
+          if (e.target.value === '') return;
+          if (parseFloat(e.target.value) < 0) e.target.value = 0;
+          setGlobalPrice(itemId, e.target.value, { text: 'Manual', category: 'stale' });
+          badge.innerText = 'Manual';
+          badge.className = 'price-age age-stale';
+        };
+        input.oninput = commitInput;
+        input.onchange = commitInput;
+
+        badge.onclick = () => refreshSinglePrice(itemId, badge, input);
+
+        row.appendChild(input);
+        row.appendChild(badge);
+        col.appendChild(nameEl);
+        col.appendChild(row);
+        wrap.appendChild(img);
+        wrap.appendChild(col);
+        td.appendChild(wrap);
+        return td;
+      }
+
+      function matchesSearch(...fields) {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q) return true;
+        return fields.some(f => String(f || '').toLowerCase().includes(q));
+      }
+
+      function renderSubFilters() {
+        subFilterBody.innerHTML = '';
+
+        if (activeTab === 'resources') {
+          subFilterCard.style.display = 'block';
+          const label = document.createElement('div');
+          label.className = 'section-label';
+          label.innerText = 'Select Resource Tree (Shared by Refining & Crafting)';
+          subFilterBody.appendChild(label);
+
+          const group = document.createElement('div');
+          group.className = 'btn-group';
+          group.style.marginBottom = '0';
+          R.RESOURCES.forEach(res => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-item' + (res.id === selectedResourceId ? ' active' : '');
+            btn.style.color = res.color;
+            btn.innerHTML = `${res.rawName} / ${res.refinedName}`;
+            btn.onclick = () => {
+              selectedResourceId = res.id;
+              saveUiState();
+              render();
+            };
+            group.appendChild(btn);
+          });
+          subFilterBody.appendChild(group);
+        } else if (activeTab === 'equipment') {
+          subFilterCard.style.display = 'block';
+
+          // Station row
+          const l1 = document.createElement('div');
+          l1.className = 'section-label';
+          l1.innerText = '1. Crafting Station';
+          subFilterBody.appendChild(l1);
+
+          const g1 = document.createElement('div');
+          g1.className = 'btn-group';
+          C.CATEGORIES.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-item' + (cat.id === selectedEquipStation ? ' active' : '');
+            btn.style.color = cat.color;
+            btn.innerText = cat.name;
+            btn.onclick = () => {
+              selectedEquipStation = cat.id;
+              const firstTree = C.TREES.find(t => t.category === cat.id);
+              if (firstTree) selectedEquipTreeId = firstTree.id;
+              saveUiState();
+              render();
+            };
+            g1.appendChild(btn);
+          });
+          subFilterBody.appendChild(g1);
+
+          // Tree row
+          const l2 = document.createElement('div');
+          l2.className = 'section-label';
+          l2.innerText = '2. Equipment Tree';
+          subFilterBody.appendChild(l2);
+
+          const g2 = document.createElement('div');
+          g2.className = 'btn-group';
+          C.TREES.filter(t => t.category === selectedEquipStation).forEach(tree => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-item' + (tree.id === selectedEquipTreeId ? ' active' : '');
+            btn.innerText = tree.name;
+            btn.onclick = () => {
+              selectedEquipTreeId = tree.id;
+              saveUiState();
+              render();
+            };
+            g2.appendChild(btn);
+          });
+          subFilterBody.appendChild(g2);
+
+          // Enchantment row
+          const l3 = document.createElement('div');
+          l3.className = 'section-label';
+          l3.innerText = '3. Enchantment Level';
+          subFilterBody.appendChild(l3);
+
+          const g3 = document.createElement('div');
+          g3.className = 'btn-group';
+          g3.style.marginBottom = '0';
+          const enchLabels = ['.0 Common', '.1 Uncommon', '.2 Rare', '.3 Exceptional', '.4 Pristine'];
+          [0, 1, 2, 3, 4].forEach(e => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `btn-item ench-color-${e}` + (e === selectedEquipEnchant ? ' active' : '');
+            btn.innerText = enchLabels[e];
+            btn.onclick = () => {
+              selectedEquipEnchant = e;
+              saveUiState();
+              render();
+            };
+            g3.appendChild(btn);
+          });
+          subFilterBody.appendChild(g3);
+        } else {
+          subFilterCard.style.display = 'none';
+        }
+      }
+
+      function render() {
+        // Update top tab active states
+        mainTabGroup.querySelectorAll('button[data-tab]').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.tab === activeTab);
+        });
+
+        renderSubFilters();
+        currentVisibleIds = [];
+        pricesTableBody.innerHTML = '';
+
+        const matchesTier = (tier) => tierFilter === 'all' || Number(tierFilter) === Number(tier);
+        const rows = [];
+
+        if (activeTab === 'resources') {
+          const res = R.RESOURCES.find(r => r.id === selectedResourceId) || R.RESOURCES[0];
+          tableSectionTitle.innerText = `${res.rawName} & ${res.refinedName} Prices (T2–T8 · Shared by Refining & Crafting)`;
+          pricesTableHead.innerHTML = `
+            <tr>
+              <th>Tier</th>
+              <th>Raw ${res.rawName}</th>
+              <th>Refined ${res.refinedName}</th>
+            </tr>
+          `;
+
+          [2, 3, 4, 5, 6, 7, 8].forEach(t => {
+            if (!matchesTier(t)) return;
+            const enchs = (t <= 3 || res.id === 'stone') ? [0] : [0, 1, 2, 3, 4];
+            enchs.forEach(e => {
+              const rawId = R.getItemId(res.rawPrefix, t, e);
+              const refId = R.getItemId(res.refinedPrefix, t, e);
+              if (!matchesSearch(`T${t}.${e}`, res.rawName, res.refinedName, rawId, refId)) return;
+
+              rows.push({
+                tier: t,
+                enchant: e,
+                sortName: res.rawName,
+                buildTr: () => {
+                  const tr = document.createElement('tr');
+                  const tierTd = document.createElement('td');
+                  tierTd.className = 'tier-badge';
+                  tierTd.innerHTML = formatTierEnchHtml(t, e);
+                  tr.appendChild(tierTd);
+                  tr.appendChild(buildPriceCell({ itemId: rawId, label: `T${t}.${e} ${res.rawName}` }));
+                  tr.appendChild(buildPriceCell({ itemId: refId, label: `T${t}.${e} ${res.refinedName}`, inputColor: 'var(--success)' }));
+                  return tr;
+                },
+              });
+            });
+          });
+        } else if (activeTab === 'hearts') {
+          tableSectionTitle.innerText = 'Faction Hearts (Used in Heart Refining)';
+          pricesTableHead.innerHTML = `
+            <tr>
+              <th>Resource Tree</th>
+              <th>Faction City</th>
+              <th>Faction Heart Price</th>
+            </tr>
+          `;
+
+          R.RESOURCES.forEach(res => {
+            if (!matchesSearch(res.heartName, res.heartId, res.refinedName, res.bonusCity)) return;
+            rows.push({
+              tier: 0,
+              enchant: 0,
+              sortName: res.heartName,
+              buildTr: () => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                  <td style="font-weight: 700; color: ${res.color};">${res.rawName} / ${res.refinedName}</td>
+                  <td style="color: var(--gold);">${res.bonusCity}</td>
+                `;
+                tr.appendChild(buildPriceCell({ itemId: res.heartId, label: res.heartName, inputColor: 'var(--gold)' }));
+                return tr;
+              },
+            });
+          });
+        } else if (activeTab === 'journals') {
+          tableSectionTitle.innerText = 'Crafting Journals (T4–T8 · Empty Buy & Full Sell)';
+          pricesTableHead.innerHTML = `
+            <tr>
+              <th>Tier</th>
+              <th>Crafting Station</th>
+              <th>Empty Journal Buy</th>
+              <th>Full Journal Sell</th>
+            </tr>
+          `;
+
+          C.CATEGORIES.forEach(cat => {
+            for (let t = 4; t <= 8; t++) {
+              if (!matchesTier(t)) continue;
+              const jIds = C.getJournalItemIds(cat.id, t);
+              if (!matchesSearch(`T${t}`, cat.name, jIds.journalName, jIds.emptyId, jIds.fullId)) return;
+              rows.push({
+                tier: t,
+                enchant: 0,
+                sortName: cat.name,
+                buildTr: () => {
+                  const tr = document.createElement('tr');
+                  tr.innerHTML = `
+                    <td class="tier-badge tier-color-${t}">T${t}</td>
+                    <td style="color: ${cat.color}; font-weight: 700;">${cat.name}</td>
+                  `;
+                  tr.appendChild(buildPriceCell({ itemId: jIds.emptyId, label: `Empty ${jIds.journalName}` }));
+                  tr.appendChild(buildPriceCell({ itemId: jIds.fullId, label: `Full ${jIds.journalName}`, inputColor: 'var(--gold)' }));
+                  return tr;
+                },
+              });
+            }
+          });
+        } else if (activeTab === 'farming') {
+          tableSectionTitle.innerText = 'Island Farming — Crops & Herbs (Seeds & Harvest)';
+          pricesTableHead.innerHTML = `
+            <tr>
+              <th>Tier</th>
+              <th>Category</th>
+              <th>Seed Buy Price</th>
+              <th>Harvest Sell Price</th>
+            </tr>
+          `;
+
+          F.ITEMS.forEach(item => {
+            if (!matchesTier(item.tier)) return;
+            if (!matchesSearch(`T${item.tier}`, item.name, item.seedName, item.seedId, item.productId, item.category)) return;
+            rows.push({
+              tier: item.tier,
+              enchant: 0,
+              sortName: item.name,
+              buildTr: () => {
+                const tr = document.createElement('tr');
+                const catColor = item.category === 'crops' ? 'var(--gold)' : 'var(--success)';
+                tr.innerHTML = `
+                  <td class="tier-badge tier-color-${item.tier}">T${item.tier}</td>
+                  <td style="color: ${catColor}; font-weight: 700; text-transform: capitalize;">${item.category}</td>
+                `;
+                tr.appendChild(buildPriceCell({
+                  itemId: item.seedId,
+                  label: item.seedName,
+                  subHint: `NPC: ${item.npcSeedPrice.toLocaleString()} s`,
+                }));
+                tr.appendChild(buildPriceCell({
+                  itemId: item.productId,
+                  label: item.productName,
+                  inputColor: 'var(--success)',
+                }));
+                return tr;
+              },
+            });
+          });
+        } else if (activeTab === 'equipment') {
+          const treeObj = C.TREES.find(t => t.id === selectedEquipTreeId) || C.TREES[0];
+          const treeItems = C.ITEMS.filter(i => i.treeId === treeObj.id);
+          tableSectionTitle.innerText = `${treeObj.name} — Equipment & Artifact Prices (T4–T8 · .${selectedEquipEnchant})`;
+          pricesTableHead.innerHTML = `
+            <tr>
+              <th>Item</th>
+              <th>Tier</th>
+              <th style="color: var(--purple);">Artifact Buy (0% RRR)</th>
+              <th style="color: var(--success);">Crafted Item Sell</th>
+            </tr>
+          `;
+
+          treeItems.forEach(item => {
+            const effEnch = item.supportsEnchant === false ? 0 : selectedEquipEnchant;
+            for (let t = 4; t <= 8; t++) {
+              if (!matchesTier(t)) continue;
+              const artId = C.getArtifactItemId(item, t);
+              const outId = C.getCraftedItemId(item, t, effEnch);
+              if (!matchesSearch(`T${t}.${effEnch}`, item.name, item.artifactName, artId, outId)) return;
+
+              rows.push({
+                tier: t,
+                enchant: effEnch,
+                sortName: item.name,
+                buildTr: () => {
+                  const tr = document.createElement('tr');
+                  tr.innerHTML = `
+                    <td style="font-weight: 700; color: var(--text);">
+                      ${item.name}
+                      ${item.artifactCode ? `<div class="hint-sub" style="color: var(--purple);">${item.artifactName}</div>` : `<div class="hint-sub">Standard</div>`}
+                    </td>
+                    <td class="tier-badge">${formatTierEnchHtml(t, effEnch)}</td>
+                  `;
+                  tr.appendChild(buildPriceCell({
+                    itemId: artId,
+                    label: artId ? `T${t} ${item.artifactName}` : '',
+                    inputColor: 'var(--purple)',
+                    borderColor: 'var(--purple)',
+                  }));
+                  tr.appendChild(buildPriceCell({
+                    itemId: outId,
+                    label: `T${t}.${effEnch} ${item.name}`,
+                    inputColor: 'var(--success)',
+                  }));
+                  return tr;
+                },
+              });
+            }
+          });
+        }
+
+        if (tierSort === 'asc') {
+          rows.sort((a, b) => (a.tier - b.tier) || (a.enchant - b.enchant) || a.sortName.localeCompare(b.sortName));
+        } else if (tierSort === 'desc') {
+          rows.sort((a, b) => (b.tier - a.tier) || (b.enchant - a.enchant) || a.sortName.localeCompare(b.sortName));
+        }
+
+        rows.forEach(r => pricesTableBody.appendChild(r.buildTr()));
+
+        tableRowCount.innerText = `${rows.length} rows · ${currentVisibleIds.length} price fields`;
+        updateSavedBadge();
+      }
+
+      // Event Listeners
+      mainTabGroup.querySelectorAll('button[data-tab]').forEach(btn => {
+        btn.onclick = () => {
+          activeTab = btn.dataset.tab;
+          saveUiState();
+          render();
+        };
+      });
+
+      citySelect.onchange = (e) => {
+        selectedCity = e.target.value;
+        saveUiState();
+      };
+
+      searchInput.oninput = (e) => {
+        searchQuery = e.target.value;
+        render();
+      };
+
+      tierFilterSelect.onchange = (e) => {
+        tierFilter = e.target.value;
+        saveUiState();
+        render();
+      };
+
+      tierSortSelect.onchange = (e) => {
+        tierSort = e.target.value;
+        saveUiState();
+        render();
+      };
+
+      fetchVisibleBtn.onclick = async () => {
+        const uniqueIds = Array.from(new Set(currentVisibleIds));
+        if (uniqueIds.length === 0) return;
+
+        fetchVisibleBtn.disabled = true;
+        fetchVisibleBtn.innerText = `⏳ Fetching 0/${uniqueIds.length}...`;
+
+        let totalUpdated = 0;
+        const CHUNK_SIZE = 75;
+        const bulkEntries = {};
+
+        try {
+          for (let i = 0; i < uniqueIds.length; i += CHUNK_SIZE) {
+            const chunk = uniqueIds.slice(i, i + CHUNK_SIZE);
+            fetchVisibleBtn.innerText = `⏳ Fetching ${Math.min(i + chunk.length, uniqueIds.length)}/${uniqueIds.length}...`;
+            const res = await API.fetchPrices({
+              server: SERVER,
+              itemIds: chunk,
+              locations: selectedCity,
+              forceRefresh: true,
+            });
+            if (res.data && res.data.length > 0) {
+              const bestById = new Map();
+              res.data.forEach(entry => {
+                const p = entry.sell_price_min > 0 ? entry.sell_price_min : entry.buy_price_max;
+                if (p > 0) {
+                  const prev = bestById.get(entry.item_id);
+                  if (!prev || p < prev.price) {
+                    bestById.set(entry.item_id, {
+                      price: p,
+                      age: API.formatPriceAge(entry.sell_price_min_date),
+                    });
+                  }
+                }
+              });
+              bestById.forEach((val, id) => {
+                priceMap.set(id, val);
+                bulkEntries[id] = val;
+                totalUpdated++;
+              });
+            }
+          }
+          PS.setPricesBulk(bulkEntries);
+          render();
+          fetchVisibleBtn.innerText = `✓ ${totalUpdated} Updated`;
+          setTimeout(() => {
+            fetchVisibleBtn.innerText = 'Fetch Visible (EU)';
+            fetchVisibleBtn.disabled = false;
+          }, 2500);
+        } catch (err) {
+          console.warn('Bulk fetch error:', err);
+          fetchVisibleBtn.innerText = '⚠ Error';
+          setTimeout(() => {
+            fetchVisibleBtn.innerText = 'Fetch Visible (EU)';
+            fetchVisibleBtn.disabled = false;
+          }, 2500);
+        }
+      };
+
+      clearPricesBtn.onclick = () => {
+        if (!confirm('Reset all saved manual and fetched prices across Refining, Farming, and Crafting back to default estimates?')) {
+          return;
+        }
+        PS.clearAll();
+        reloadPriceMap();
+        render();
+      };
+
+      // Listen for updates from other open calculator tabs
+      PS.onExternalChange(() => {
+        reloadPriceMap();
+        render();
+      });
+
+      // Initialize
+      reloadPriceMap();
+      loadUiState();
+      render();
+    })();
+  </script>
+</body>
+</html>

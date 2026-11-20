@@ -7,6 +7,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
   <script src="albion_crafting_rules.js?v=20261120-1"></script>
   <script src="albion_api.js?v=20261119-2"></script>
+  <script src="albion_price_store.js?v=20261120-3"></script>
   <style>
     :root {
       --bg: #000000;
@@ -834,6 +835,10 @@
         <span class="sidebar-link-icon">⚔️</span>
         <span class="sidebar-link-label">Crafting</span>
       </a>
+      <a href="prices.html" class="sidebar-link" title="Global Item Prices">
+        <span class="sidebar-link-icon">💰</span>
+        <span class="sidebar-link-label">Prices</span>
+      </a>
     </nav>
   </aside>
 
@@ -1499,7 +1504,9 @@
 
       function setItemPrice(id, price, age = { text: 'Manual', category: 'stale' }) {
         if (!id) return;
-        priceStore.set(id, { price: Math.max(0, parseInt(price) || 0), age });
+        const cleanPrice = Math.max(0, parseInt(price) || 0);
+        priceStore.set(id, { price: cleanPrice, age });
+        if (window.AlbionPriceStore) window.AlbionPriceStore.setPrice(id, cleanPrice, age);
       }
 
       function syncControlsUI() {
@@ -2730,6 +2737,15 @@ ${useFocus ? `Focus Used:  ${sim.totalFocusCost.toLocaleString()} FP (${sim.silv
 
       // Initialize & Restore Session
       loadSession();
+      if (window.AlbionPriceStore) {
+        window.AlbionPriceStore.applyToMap(priceStore);
+        window.AlbionPriceStore.onExternalChange(() => {
+          window.AlbionPriceStore.applyToMap(priceStore);
+          syncCurrentItemPrices();
+          render();
+          renderPriceMatrix();
+        });
+      }
       syncControlsUI();
       syncCurrentItemPrices();
       render();
