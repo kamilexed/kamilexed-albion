@@ -176,18 +176,18 @@
 
     const FAME_PER_MATERIAL_UNIT = {
       4: 22.5,
-      5: 45,
-      6: 90,
-      7: 180,
-      8: 360,
+      5: 90,
+      6: 270,
+      7: 645,
+      8: 1395,
     };
 
     const JOURNAL_FAME_REQUIRED = {
-      4: 900,
-      5: 1800,
-      6: 3600,
-      7: 7200,
-      8: 14400,
+      4: 3600,
+      5: 7200,
+      6: 14400,
+      7: 28380,
+      8: 58590,
     };
 
     const BASE_FOCUS_PER_8_UNITS = {
@@ -702,7 +702,7 @@
       const totalMats = getTotalMaterialsPerCraft(item);
       const itemValue = totalMats * Math.pow(2, effTier);
       const nutrition = itemValue * 0.1125;
-      return (nutrition / 100) * fee;
+      return Math.ceil((nutrition / 100) * fee);
     }
 
     /**
@@ -717,7 +717,7 @@
       const totalMats = getTotalMaterialsPerCraft(item);
       const baseFamePerUnit = FAME_PER_MATERIAL_UNIT[t] || 22.5;
       const famePerCraft = totalMats * baseFamePerUnit * Math.pow(2, e);
-      const journalFameReq = JOURNAL_FAME_REQUIRED[t] || 900;
+      const journalFameReq = JOURNAL_FAME_REQUIRED[t] || 3600;
       const journalsPerCraft = famePerCraft / journalFameReq;
       return {
         famePerCraft,

@@ -932,6 +932,19 @@ assert(
   'Hideout Q1 (+1%) + Power Lvl 1 (0%) without Focus is 0.99% RRR'
 );
 
+// Verify Official Journal Fame/Capacity & Station Fee Ceil Rounding
+const claymoreJMetrics = C.calculateJournalMetrics({ item: claymoreItem, tier: 6, enchantment: 1 });
+assert(
+  claymoreJMetrics.famePerCraft === 17280 &&
+  claymoreJMetrics.journalFameReq === 14400 &&
+  Math.abs(claymoreJMetrics.journalsPerCraft - 1.2) < 0.0001,
+  'T6.1 Claymore yields 17,280 crafting fame and fills 1.20 T6 Journals (14,400 capacity)'
+);
+assert(
+  C.calculateCraftingStationFee({ item: claymoreItem, tier: 6, enchantment: 1, feePer100Nutrition: 400 }) === 1844,
+  'T6.1 Claymore station fee at 400 tax rounds up per craft to 1,844 silver'
+);
+
 console.log('\n=====================================================');
 console.log(`TEST RESULTS: ${passedCount} PASSED, ${failedCount} FAILED`);
 console.log('=====================================================');
