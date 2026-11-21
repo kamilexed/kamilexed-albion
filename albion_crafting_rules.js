@@ -191,15 +191,15 @@
     };
 
     const BASE_FOCUS_PER_8_UNITS = {
-      4: 114,
-      5: 206,
-      6: 372,
-      7: 672,
-      8: 1213,
-      9: 2190,
-      10: 3953,
-      11: 7135,
-      12: 12879,
+      4: 429,
+      5: 750,
+      6: 1313,
+      7: 2298,
+      8: 4021,
+      9: 7037,
+      10: 12315,
+      11: 21551,
+      12: 37715,
     };
 
     /**
@@ -675,12 +675,12 @@
         : Math.min(Math.max(Number(enchantment) || 0, 0), 4);
       const effTier = Math.min(Math.max(t + e, 4), 12);
       const totalMats = getTotalMaterialsPerCraft(item);
-      const basePer8 = BASE_FOCUS_PER_8_UNITS[effTier] || 114;
+      const basePer8 = BASE_FOCUS_PER_8_UNITS[effTier] || 429;
       const baseFocus = (totalMats / 8) * basePer8;
 
       const m = Math.min(Math.max(Number(mastery) || 0, 0), 100);
       const s = Math.min(Math.max(Number(spec) || 0, 0), 100);
-      const cs = Math.min(Math.max(Number(crossSpec) || 0, 0), 600);
+      const cs = Math.min(Math.max(Number(crossSpec) || 0, 0), 800);
       const fce = m * 30 + s * 250 + cs * 30;
 
       return Math.max(1, Math.round(baseFocus * Math.pow(0.5, fce / 10000)));

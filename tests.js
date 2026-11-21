@@ -945,6 +945,17 @@ assert(
   'T6.1 Claymore station fee at 400 tax rounds up per craft to 1,844 silver'
 );
 
+// Verify Official Base Focus Cost (0 Spec -> 4,596 FP for T6.1 Robe, ~1,161 FP at 100 Mastery / 35 Spec / 270 Cross)
+const druidRobeItem = C.ITEMS.find(i => i.id === 'druid_robe');
+assert(
+  C.calculateCraftingFocusCost({ item: druidRobeItem, tier: 6, enchantment: 1, mastery: 0, spec: 0, crossSpec: 0 }) === 4596,
+  'T6.1 Druid Robe 0-spec base focus cost matches official items.json (4,596 FP)'
+);
+assert(
+  C.calculateCraftingFocusCost({ item: druidRobeItem, tier: 6, enchantment: 1, mastery: 100, spec: 35, crossSpec: 270 }) === 1161,
+  'T6.1 Druid Robe focus cost at 100 Mastery / 35 Spec / 270 Cross-Spec is 1,161 FP'
+);
+
 console.log('\n=====================================================');
 console.log(`TEST RESULTS: ${passedCount} PASSED, ${failedCount} FAILED`);
 console.log('=====================================================');
