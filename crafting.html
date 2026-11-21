@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Albion Online — Crafting Calculator</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
-  <script src="albion_crafting_rules.js?v=20261121-1"></script>
+  <script src="albion_crafting_rules.js?v=20261121-2"></script>
   <script src="albion_api.js?v=20261119-2"></script>
   <script src="albion_price_store.js?v=20261120-3"></script>
   <style>
@@ -2042,6 +2042,7 @@
         const m = treeMasteries[selectedTree.id] ?? 100;
         const sp = itemSpecs[selectedItem.id] ?? 100;
         const cs = getCrossSpecForItem(selectedItem);
+        const crossSpecFce = C.calculateTreeCrossSpecFCE(itemSpecs, selectedTree.id);
 
         const fitted = C.fitBatchToCraftingFocus({
           focusPool,
@@ -2058,6 +2059,7 @@
           mastery: m,
           spec: sp,
           crossSpec: cs,
+          crossSpecFce,
         });
 
         quantity = Math.max(1, fitted);
@@ -2087,6 +2089,7 @@
         const m = treeMasteries[selectedTree.id] ?? 100;
         const sp = itemSpecs[selectedItem.id] ?? 100;
         const cs = getCrossSpecForItem(selectedItem);
+        const crossSpecFce = C.calculateTreeCrossSpecFCE(itemSpecs, selectedTree.id);
         const cost = C.calculateCraftingFocusCost({
           item: selectedItem,
           tier: selectedTier,
@@ -2094,6 +2097,7 @@
           mastery: m,
           spec: sp,
           crossSpec: cs,
+          crossSpecFce,
         });
         document.getElementById('modalFocusPreview').innerText =
           `${cost.toLocaleString()} FP / craft (T${selectedTier}.${selectedEnchant} ${selectedItem.name} · Cross-Spec: ${cs})`;
@@ -2424,6 +2428,7 @@
         const m = treeMasteries[selectedTree.id] ?? 100;
         const sp = itemSpecs[selectedItem.id] ?? 100;
         const cs = getCrossSpecForItem(selectedItem);
+        const crossSpecFce = C.calculateTreeCrossSpecFCE(itemSpecs, selectedTree.id);
         document.getElementById('specSummaryBadge').innerText = `${m}/${sp}`;
         document.getElementById('quickMasteryVal').innerText = m;
         document.getElementById('quickSpecItemLabel').innerText = selectedItem.name;
@@ -2458,6 +2463,7 @@
           mastery: m,
           spec: sp,
           crossSpec: cs,
+          crossSpecFce,
           feePer100Nutrition: stationTax,
           primaryMatPrice: curPrimaryPrice,
           secondaryMatPrice: curSecondaryPrice,

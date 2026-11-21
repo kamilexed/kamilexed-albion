@@ -945,15 +945,51 @@ assert(
   'T6.1 Claymore station fee at 400 tax rounds up per craft to 1,844 silver'
 );
 
-// Verify Official Base Focus Cost (0 Spec -> 4,596 FP for T6.1 Robe, ~1,161 FP at 100 Mastery / 35 Spec / 270 Cross)
+// Verify Exact In-Game Cloth Robe Tree Cross-Spec FCE & Total Focus (7,239 for 6x Druid Robe, 6,811 for 5x Fiend Robe)
 const druidRobeItem = C.ITEMS.find(i => i.id === 'druid_robe');
+const userRobeSpecs = {
+  cloth_robe: 61,
+  cleric_robe: 66,
+  mage_robe: 61,
+  druid_robe: 35,
+  fiend_robe: 28,
+  cultist_robe: 19,
+  feyscale_robe: 25,
+  robe_of_purity: 10,
+};
+const robeTreeCrossFce = C.calculateTreeCrossSpecFCE(userRobeSpecs, 'cloth_robes');
 assert(
   C.calculateCraftingFocusCost({ item: druidRobeItem, tier: 6, enchantment: 1, mastery: 0, spec: 0, crossSpec: 0 }) === 4596,
   'T6.1 Druid Robe 0-spec base focus cost matches official items.json (4,596 FP)'
 );
+const sim6Druid = C.simulateCrafting({
+  itemId: 'druid_robe',
+  tier: 6,
+  enchantment: 1,
+  cityId: 'Lymhurst',
+  useFocus: true,
+  compound: false,
+  quantity: 6,
+  mastery: 100,
+  spec: 35,
+  crossSpecFce: robeTreeCrossFce,
+});
+const sim5Fiend = C.simulateCrafting({
+  itemId: 'fiend_robe',
+  tier: 6,
+  enchantment: 1,
+  cityId: 'Lymhurst',
+  useFocus: true,
+  compound: false,
+  quantity: 5,
+  mastery: 100,
+  spec: 28,
+  crossSpecFce: robeTreeCrossFce,
+});
 assert(
-  C.calculateCraftingFocusCost({ item: druidRobeItem, tier: 6, enchantment: 1, mastery: 100, spec: 35, crossSpec: 270 }) === 1161,
-  'T6.1 Druid Robe focus cost at 100 Mastery / 35 Spec / 270 Cross-Spec is 1,161 FP'
+  sim6Druid.totalFocusCost === 7239 && sim5Fiend.totalFocusCost === 6811,
+  'Exact in-game focus match: 6x T6.1 Druid Robes = 7,239 FP and 5x T6.1 Fiend Robes = 6,811 FP',
+  `Druid6=${sim6Druid.totalFocusCost}, Fiend5=${sim5Fiend.totalFocusCost}`
 );
 
 console.log('\n=====================================================');

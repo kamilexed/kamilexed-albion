@@ -661,13 +661,39 @@
       };
     }
 
-    function calculateCraftingFocusCost({
+    /**
+     * Cross-spec Focus Cost Efficiency weight per level for every item in a tree (applies to all items in the tree, including itself):
+     * - Non-artifact items & Avalonian items: 30 FCE/lvl
+     * - Standard artifact items (Keeper/Hell/Morgana/Undead/Fey/Crystal): 15 FCE/lvl
+     */
+    function getItemCrossSpecWeight(item) {
+      if (!item) return 30;
+      if (!item.artifactCode) return 30;
+      if (item.code && item.code.includes('_AVALON')) return 30;
+      return 15;
+    }
+
+    /**
+     * Sums cross-spec FCE across all items in the same equipment tree (including the crafted item's own cross-spec bonus).
+     */
+    function calculateTreeCrossSpecFCE(itemSpecs, treeId) {
+      if (!itemSpecs || !treeId) return 0;
+      return ITEMS
+        .filter((it) => it.treeId === treeId)
+        .reduce((sum, it) => {
+          const lvl = Math.min(Math.max(Number(itemSpecs[it.id]) || 0, 0), 100);
+          return sum + lvl * getItemCrossSpecWeight(it);
+        }, 0);
+    }
+
+    function calculateExactCraftingFocusCost({
       item,
       tier = 4,
       enchantment = 0,
       mastery = 100,
       spec = 100,
       crossSpec = 0,
+      crossSpecFce = null,
     }) {
       const t = Math.min(Math.max(Number(tier) || 4, 4), 8);
       const e = item && item.supportsEnchant === false
@@ -680,10 +706,16 @@
 
       const m = Math.min(Math.max(Number(mastery) || 0, 0), 100);
       const s = Math.min(Math.max(Number(spec) || 0, 0), 100);
-      const cs = Math.min(Math.max(Number(crossSpec) || 0, 0), 800);
-      const fce = m * 30 + s * 250 + cs * 30;
+      const crossFce = crossSpecFce !== null && crossSpecFce !== undefined
+        ? Math.max(0, Number(crossSpecFce) || 0)
+        : Math.min(Math.max(Number(crossSpec) || 0, 0), 800) * 30;
+      const fce = m * 30 + s * 250 + crossFce;
 
-      return Math.max(1, Math.round(baseFocus * Math.pow(0.5, fce / 10000)));
+      return Math.max(1, baseFocus * Math.pow(0.5, fce / 10000));
+    }
+
+    function calculateCraftingFocusCost(opts) {
+      return Math.max(1, Math.round(calculateExactCraftingFocusCost(opts)));
     }
 
     function calculateCraftingStationFee({
@@ -839,6 +871,7 @@
       mastery = 100,
       spec = 100,
       crossSpec = 0,
+      crossSpecFce = null,
       feePer100Nutrition = 400,
       primaryMatPrice = 300,
       secondaryMatPrice = 300,
@@ -908,17 +941,19 @@
       const totalStationFee = totalCrafts * stationFeePerCraft;
 
       // Focus Cost
-      const focusPerCraft = useFocus
-        ? calculateCraftingFocusCost({
+      const exactFocusPerCraft = useFocus
+        ? calculateExactCraftingFocusCost({
             item,
             tier: safeTier,
             enchantment: safeEnchant,
             mastery,
             spec,
             crossSpec,
+            crossSpecFce,
           })
         : 0;
-      const totalFocusCost = totalCrafts * focusPerCraft;
+      const focusPerCraft = useFocus ? Math.max(1, Math.round(exactFocusPerCraft)) : 0;
+      const totalFocusCost = useFocus ? Math.round(totalCrafts * exactFocusPerCraft) : 0;
 
       // Journals (NEVER affected by RRR — 1 empty journal consumed per 1 full journal produced)
       const jMetrics = calculateJournalMetrics({
@@ -1036,14 +1071,16 @@
       mastery = 100,
       spec = 100,
       crossSpec = 0,
+      crossSpecFce = null,
     }) {
-      const focusPerCraft = calculateCraftingFocusCost({
+      const focusPerCraft = calculateExactCraftingFocusCost({
         item,
         tier,
         enchantment,
         mastery,
         spec,
         crossSpec,
+        crossSpecFce,
       });
       if (focusPerCraft <= 0) return 10;
 
@@ -1108,7 +1145,10 @@
       getCraftedItemId,
       getJournalItemIds,
       getTotalMaterialsPerCraft,
+      getItemCrossSpecWeight,
+      calculateTreeCrossSpecFCE,
       calculateCraftingRRR,
+      calculateExactCraftingFocusCost,
       calculateCraftingFocusCost,
       calculateCraftingStationFee,
       calculateJournalMetrics,
