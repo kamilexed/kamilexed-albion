@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Albion Online — Crafting Calculator</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
-  <script src="albion_crafting_rules.js?v=20261123-1"></script>
+  <script src="albion_crafting_rules.js?v=20261123-2"></script>
   <script src="albion_api.js?v=20261119-2"></script>
   <script src="albion_price_store.js?v=20261120-3"></script>
   <style>
@@ -943,6 +943,8 @@
             <button id="journalToggle" class="btn-toggle active" type="button" title="Fill Crafting Journals while crafting (Journals are never affected by RRR)">
               Journals: <span style="color: var(--gold);">ON</span>
             </button>
+
+            <select id="foodTopSelect" class="pill-select" style="color: var(--success);" title="Select food eaten before crafting (boosts Crafting Quality &amp; Speed)"></select>
           </div>
         </div>
       </header>
@@ -1064,8 +1066,8 @@
               </div>
             </div>
 
-            <!-- Daily Bonus, Crafting Salad & Station Tax -->
-            <div class="field-row field-row-auto" style="margin-bottom: 12px;">
+            <!-- Daily Bonus & Station Tax -->
+            <div class="field-row field-row-2" style="margin-bottom: 12px;">
               <div class="field-box">
                 <div class="field-label"><span>Daily Production Event</span></div>
                 <select id="dailyBonusSelect" class="field-input">
@@ -1076,16 +1078,23 @@
               </div>
 
               <div class="field-box">
-                <div class="field-label"><span>Crafting Food (Quality)</span></div>
-                <select id="saladSelect" class="field-input"></select>
-              </div>
-
-              <div class="field-box">
                 <div class="field-label">
                   <span>Station Fee / 100 Nut.</span>
                   <span id="feePerCraftBadge" style="font-size: 10px; color: var(--accent);">0 s/craft</span>
                 </div>
                 <input type="number" id="stationTaxInput" min="0" value="400" class="field-input">
+              </div>
+            </div>
+
+            <!-- Food Eaten Before Crafting -->
+            <div class="field-box" style="margin-bottom: 12px;">
+              <div class="field-label">
+                <span>Food Eaten Before Crafting</span>
+                <span id="saladEffectBadge" style="font-size: 10px; color: var(--success);">No Food (+0 Quality)</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <img id="saladIcon" class="item-icon" src="" alt="Food" style="width: 32px; height: 32px; display: none; flex-shrink: 0;">
+                <select id="saladSelect" class="field-input"></select>
               </div>
             </div>
 
@@ -1517,13 +1526,19 @@
       const customRRRContainer = document.getElementById('customRRRContainer');
       const dailyBonusSelect = document.getElementById('dailyBonusSelect');
       const saladSelect = document.getElementById('saladSelect');
+      const foodTopSelect = document.getElementById('foodTopSelect');
       const stationTaxInput = document.getElementById('stationTaxInput');
 
       C.SALADS.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.id;
-        opt.textContent = s.name;
-        saladSelect.appendChild(opt);
+        const opt1 = document.createElement('option');
+        opt1.value = s.id;
+        opt1.textContent = s.name;
+        saladSelect.appendChild(opt1);
+
+        const opt2 = document.createElement('option');
+        opt2.value = s.id;
+        opt2.textContent = `Food: ${s.name}`;
+        foodTopSelect.appendChild(opt2);
       });
       const quantityInput = document.getElementById('quantityInput');
       const customRRRInput = document.getElementById('customRRRInput');
@@ -1630,6 +1645,20 @@
 
         dailyBonusSelect.value = String(dailyBonus);
         saladSelect.value = selectedSaladId;
+        foodTopSelect.value = selectedSaladId;
+        const activeSaladUi = C.SALADS.find(sl => sl.id === selectedSaladId) || C.SALADS[0];
+        const saladIconEl = document.getElementById('saladIcon');
+        const saladBadgeEl = document.getElementById('saladEffectBadge');
+        if (activeSaladUi && activeSaladUi.itemId) {
+          saladIconEl.src = C.getRenderUrl(activeSaladUi.itemId, 1, 48);
+          saladIconEl.style.display = 'block';
+          saladBadgeEl.innerText = `+${activeSaladUi.bonus} Quality · +${activeSaladUi.speedPct}% Speed`;
+          saladBadgeEl.style.color = 'var(--success)';
+        } else {
+          saladIconEl.style.display = 'none';
+          saladBadgeEl.innerText = 'No Food (+0 Quality)';
+          saladBadgeEl.style.color = 'var(--text-muted)';
+        }
         stationTaxInput.value = stationTax;
         quantityInput.value = quantity;
         customRRRInput.value = customRRR;
@@ -2059,6 +2088,7 @@
 
       dailyBonusSelect.onchange = (e) => { dailyBonus = parseInt(e.target.value) || 0; render(); };
       saladSelect.onchange = (e) => { selectedSaladId = e.target.value || 'none'; render(); };
+      foodTopSelect.onchange = (e) => { selectedSaladId = e.target.value || 'none'; render(); };
       stationTaxInput.oninput = (e) => {
         if (parseFloat(e.target.value) < 0) e.target.value = 0;
         stationTax = Math.max(0, parseFloat(e.target.value) || 0);

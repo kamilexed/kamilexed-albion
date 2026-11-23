@@ -48,23 +48,34 @@
     const FOCUS_QUALITY_BONUS = 50; // <CraftingQuality bonus="50" /> in gamedata.xml
 
     /**
-     * Exact Crafting Salad quality bonuses verified from spells.json + items.json.
+     * Exact Crafting Salad quality & craft-speed bonuses verified from spells.json + items.json.
      */
     const SALADS = [
-      { id: 'none', name: 'None (+0 Quality)', bonus: 0 },
-      { id: 'bean_0', name: 'Bean Salad T2.0 (+33)', bonus: 33 },
-      { id: 'turnip_0', name: 'Turnip Salad T4.0 (+66)', bonus: 66 },
-      { id: 'turnip_1', name: 'Turnip Salad T4.1 (+82.5)', bonus: 82.5 },
-      { id: 'turnip_2', name: 'Turnip Salad T4.2 (+99)', bonus: 99 },
-      { id: 'turnip_3', name: 'Turnip Salad T4.3 (+115.5)', bonus: 115.5 },
-      { id: 'potato_0', name: 'Potato Salad T6.0 (+99)', bonus: 99 },
-      { id: 'potato_1', name: 'Potato Salad T6.1 (+115.5)', bonus: 115.5 },
-      { id: 'potato_2', name: 'Potato Salad T6.2 (+132)', bonus: 132 },
-      { id: 'potato_3', name: 'Potato Salad T6.3 (+148.5)', bonus: 148.5 },
-      { id: 'kraken_0', name: 'Kraken Salad T6.0 (+148.5)', bonus: 148.5 },
-      { id: 'kraken_1', name: 'Kraken Salad T6.1 (+173.25)', bonus: 173.25 },
-      { id: 'kraken_2', name: 'Kraken Salad T6.2 (+198)', bonus: 198 },
-      { id: 'kraken_3', name: 'Kraken Salad T6.3 (+222.75)', bonus: 222.75 },
+      { id: 'none', name: 'None (+0 Quality)', itemId: null, bonus: 0, speedPct: 0 },
+      { id: 'bean_0', name: 'T2.0 Bean Salad (+33 Quality)', itemId: 'T2_MEAL_SALAD', bonus: 33, speedPct: 16 },
+      { id: 'bean_1', name: 'T2.1 Bean Salad (+49.5 Quality)', itemId: 'T2_MEAL_SALAD@1', bonus: 49.5, speedPct: 24 },
+      { id: 'bean_2', name: 'T2.2 Bean Salad (+66 Quality)', itemId: 'T2_MEAL_SALAD@2', bonus: 66, speedPct: 32 },
+      { id: 'bean_3', name: 'T2.3 Bean Salad (+82.5 Quality)', itemId: 'T2_MEAL_SALAD@3', bonus: 82.5, speedPct: 40 },
+      { id: 'squid_0', name: 'T2.0 Shallowshore Squid Salad (+49.5)', itemId: 'T2_MEAL_SALAD_FISH', bonus: 49.5, speedPct: 24.8 },
+      { id: 'squid_1', name: 'T2.1 Shallowshore Squid Salad (+74.25)', itemId: 'T2_MEAL_SALAD_FISH@1', bonus: 74.25, speedPct: 37.1 },
+      { id: 'squid_2', name: 'T2.2 Shallowshore Squid Salad (+99)', itemId: 'T2_MEAL_SALAD_FISH@2', bonus: 99, speedPct: 49.5 },
+      { id: 'squid_3', name: 'T2.3 Shallowshore Squid Salad (+123.75)', itemId: 'T2_MEAL_SALAD_FISH@3', bonus: 123.75, speedPct: 61.9 },
+      { id: 'turnip_0', name: 'T4.0 Turnip Salad (+66 Quality)', itemId: 'T4_MEAL_SALAD', bonus: 66, speedPct: 32 },
+      { id: 'turnip_1', name: 'T4.1 Turnip Salad (+82.5 Quality)', itemId: 'T4_MEAL_SALAD@1', bonus: 82.5, speedPct: 40 },
+      { id: 'turnip_2', name: 'T4.2 Turnip Salad (+99 Quality)', itemId: 'T4_MEAL_SALAD@2', bonus: 99, speedPct: 48 },
+      { id: 'turnip_3', name: 'T4.3 Turnip Salad (+115.5 Quality)', itemId: 'T4_MEAL_SALAD@3', bonus: 115.5, speedPct: 56 },
+      { id: 'octopus_0', name: 'T4.0 Midwater Octopus Salad (+99)', itemId: 'T4_MEAL_SALAD_FISH', bonus: 99, speedPct: 49.5 },
+      { id: 'octopus_1', name: 'T4.1 Midwater Octopus Salad (+123.75)', itemId: 'T4_MEAL_SALAD_FISH@1', bonus: 123.75, speedPct: 61.9 },
+      { id: 'octopus_2', name: 'T4.2 Midwater Octopus Salad (+148.5)', itemId: 'T4_MEAL_SALAD_FISH@2', bonus: 148.5, speedPct: 74.3 },
+      { id: 'octopus_3', name: 'T4.3 Midwater Octopus Salad (+173.25)', itemId: 'T4_MEAL_SALAD_FISH@3', bonus: 173.25, speedPct: 86.6 },
+      { id: 'potato_0', name: 'T6.0 Potato Salad (+99 Quality)', itemId: 'T6_MEAL_SALAD', bonus: 99, speedPct: 48 },
+      { id: 'potato_1', name: 'T6.1 Potato Salad (+115.5 Quality)', itemId: 'T6_MEAL_SALAD@1', bonus: 115.5, speedPct: 56 },
+      { id: 'potato_2', name: 'T6.2 Potato Salad (+132 Quality)', itemId: 'T6_MEAL_SALAD@2', bonus: 132, speedPct: 64 },
+      { id: 'potato_3', name: 'T6.3 Potato Salad (+148.5 Quality)', itemId: 'T6_MEAL_SALAD@3', bonus: 148.5, speedPct: 72 },
+      { id: 'kraken_0', name: 'T6.0 Deepwater Kraken Salad (+148.5)', itemId: 'T6_MEAL_SALAD_FISH', bonus: 148.5, speedPct: 74.3 },
+      { id: 'kraken_1', name: 'T6.1 Deepwater Kraken Salad (+173.25)', itemId: 'T6_MEAL_SALAD_FISH@1', bonus: 173.25, speedPct: 86.6 },
+      { id: 'kraken_2', name: 'T6.2 Deepwater Kraken Salad (+198)', itemId: 'T6_MEAL_SALAD_FISH@2', bonus: 198, speedPct: 99 },
+      { id: 'kraken_3', name: 'T6.3 Deepwater Kraken Salad (+222.75)', itemId: 'T6_MEAL_SALAD_FISH@3', bonus: 222.75, speedPct: 111.4 },
     ];
 
     /**
