@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Albion Online — Crafting Calculator</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
-  <script src="albion_crafting_rules.js?v=20261121-2"></script>
+  <script src="albion_crafting_rules.js?v=20261123-1"></script>
   <script src="albion_api.js?v=20261119-2"></script>
   <script src="albion_price_store.js?v=20261120-3"></script>
   <style>
@@ -617,6 +617,58 @@
       font-family: monospace;
     }
 
+    /* Quality Roll Chances Grid */
+    .quality-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
+    .quality-box {
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .quality-name {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .quality-pct {
+      font-size: 18px;
+      font-weight: 800;
+      font-family: monospace;
+      line-height: 1.15;
+    }
+
+    .quality-exp {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    .quality-bar-track {
+      width: 100%;
+      height: 4px;
+      background: var(--surface);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .quality-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.15s ease;
+    }
+
     /* Tables */
     .breakdown-table {
       width: 100%;
@@ -1012,8 +1064,8 @@
               </div>
             </div>
 
-            <!-- Daily Bonus & Station Tax -->
-            <div class="field-row field-row-2" style="margin-bottom: 12px;">
+            <!-- Daily Bonus, Crafting Salad & Station Tax -->
+            <div class="field-row field-row-auto" style="margin-bottom: 12px;">
               <div class="field-box">
                 <div class="field-label"><span>Daily Production Event</span></div>
                 <select id="dailyBonusSelect" class="field-input">
@@ -1021,6 +1073,11 @@
                   <option value="10">+10% Crafting Event</option>
                   <option value="20">+20% Crafting Event</option>
                 </select>
+              </div>
+
+              <div class="field-box">
+                <div class="field-label"><span>Crafting Food (Quality)</span></div>
+                <select id="saladSelect" class="field-input"></select>
               </div>
 
               <div class="field-box">
@@ -1166,6 +1223,17 @@
             <div id="unitCraftCostSub" class="kpi-sub">vs 0 Market</div>
           </div>
         </div>
+
+        <!-- Quality Roll Chances Card -->
+        <section class="card">
+          <div class="card-header">
+            <h2 class="card-title">Quality Roll Chances</h2>
+            <span id="qualityBonusSummary" style="font-size: 11px; color: var(--gold); font-family: monospace; font-weight: 700;" data-tooltip="Quality Bonus = Mastery (0.75/lvl) + Active Spec (6/lvl) + Tree Cross-Spec + Focus (+50) + Salad. Each +100 Quality Bonus grants 1 extra quality roll.">
+              Quality Bonus: +0 (1.00 Rolls)
+            </span>
+          </div>
+          <div id="qualityChancesGrid" class="quality-grid"></div>
+        </section>
 
         <!-- Financial Breakdown & Export -->
         <section class="card">
@@ -1329,6 +1397,7 @@
       let compound = true;
       let useJournals = true;
       let dailyBonus = 0;
+      let selectedSaladId = 'none';
       let stationTax = 400;
       let quantity = 10;
       let customRRR = 24.8;
@@ -1447,7 +1516,15 @@
       const hideoutBiomeToggle = document.getElementById('hideoutBiomeToggle');
       const customRRRContainer = document.getElementById('customRRRContainer');
       const dailyBonusSelect = document.getElementById('dailyBonusSelect');
+      const saladSelect = document.getElementById('saladSelect');
       const stationTaxInput = document.getElementById('stationTaxInput');
+
+      C.SALADS.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.name;
+        saladSelect.appendChild(opt);
+      });
       const quantityInput = document.getElementById('quantityInput');
       const customRRRInput = document.getElementById('customRRRInput');
       const primaryMatPriceInput = document.getElementById('primaryMatPriceInput');
@@ -1552,6 +1629,7 @@
           `Zone +${qPct}% · Power +${pPct}% · Spec +${hideoutBiomeMatch ? specBonusPct : '0'}%`;
 
         dailyBonusSelect.value = String(dailyBonus);
+        saladSelect.value = selectedSaladId;
         stationTaxInput.value = stationTax;
         quantityInput.value = quantity;
         customRRRInput.value = customRRR;
@@ -1580,6 +1658,7 @@
             compound,
             useJournals,
             dailyBonus,
+            saladId: selectedSaladId,
             stationTax,
             quantity,
             customRRR,
@@ -1634,6 +1713,7 @@
           if (typeof s.compound === 'boolean') compound = s.compound;
           if (typeof s.useJournals === 'boolean') useJournals = s.useJournals;
           if ([0, 10, 20].includes(Number(s.dailyBonus))) dailyBonus = Number(s.dailyBonus);
+          if (s.saladId && C.SALADS.some(sl => sl.id === s.saladId)) selectedSaladId = s.saladId;
           if (typeof s.stationTax === 'number' && !Number.isNaN(s.stationTax)) stationTax = Math.max(0, s.stationTax);
           if (typeof s.quantity === 'number' && !Number.isNaN(s.quantity)) quantity = Math.max(1, Math.round(s.quantity));
           if (typeof s.customRRR === 'number' && !Number.isNaN(s.customRRR)) customRRR = Math.min(Math.max(0, s.customRRR), 95);
@@ -1978,6 +2058,7 @@
       };
 
       dailyBonusSelect.onchange = (e) => { dailyBonus = parseInt(e.target.value) || 0; render(); };
+      saladSelect.onchange = (e) => { selectedSaladId = e.target.value || 'none'; render(); };
       stationTaxInput.oninput = (e) => {
         if (parseFloat(e.target.value) < 0) e.target.value = 0;
         stationTax = Math.max(0, parseFloat(e.target.value) || 0);
@@ -2429,6 +2510,8 @@
         const sp = itemSpecs[selectedItem.id] ?? 100;
         const cs = getCrossSpecForItem(selectedItem);
         const crossSpecFce = C.calculateTreeCrossSpecFCE(itemSpecs, selectedTree.id);
+        const crossSpecQualityBonus = C.calculateTreeQualityCrossSpecBonus(itemSpecs, selectedTree.id);
+        const activeSalad = C.SALADS.find(sl => sl.id === selectedSaladId) || C.SALADS[0];
         document.getElementById('specSummaryBadge').innerText = `${m}/${sp}`;
         document.getElementById('quickMasteryVal').innerText = m;
         document.getElementById('quickSpecItemLabel').innerText = selectedItem.name;
@@ -2464,6 +2547,8 @@
           spec: sp,
           crossSpec: cs,
           crossSpecFce,
+          crossSpecQualityBonus,
+          saladBonus: activeSalad ? activeSalad.bonus : 0,
           feePer100Nutrition: stationTax,
           primaryMatPrice: curPrimaryPrice,
           secondaryMatPrice: curSecondaryPrice,
@@ -2616,6 +2701,39 @@
           unitCostSub.innerText = 'Net cost per item crafted';
           unitCostSub.style.color = 'var(--text-muted)';
         }
+
+        // Quality Roll Chances Card
+        const qc = sim.qualityChances;
+        const qSummaryEl = document.getElementById('qualityBonusSummary');
+        qSummaryEl.innerText = `Quality Bonus: +${qc.totalQualityBonus} (${qc.totalRolls.toFixed(2)} Rolls)`;
+        qSummaryEl.setAttribute(
+          'data-tooltip',
+          `Mastery: +${qc.breakdown.masteryQuality.toFixed(1)} · Active Spec: +${qc.breakdown.activeSpecQuality.toFixed(1)} · Tree Cross: +${qc.breakdown.crossQuality.toFixed(1)} · Focus: +${qc.breakdown.focusQuality} · Food: +${qc.breakdown.foodQuality}`
+        );
+
+        const qGrid = document.getElementById('qualityChancesGrid');
+        qGrid.innerHTML = '';
+        qc.tiers.forEach(qt => {
+          const expectedCount = sim.totalCrafts * qt.probability;
+          const pctStr = qt.percentage >= 10
+            ? qt.percentage.toFixed(1)
+            : qt.percentage.toFixed(2);
+          const expStr = expectedCount >= 10
+            ? `~${Math.round(expectedCount).toLocaleString()} items`
+            : `~${expectedCount.toFixed(1)} items`;
+
+          const box = document.createElement('div');
+          box.className = 'quality-box';
+          box.innerHTML = `
+            <div class="quality-name" style="color: ${qt.color};">${qt.name}</div>
+            <div class="quality-pct" style="color: ${qt.color};">${pctStr}%</div>
+            <div class="quality-exp">${expStr} (of ${sim.totalCrafts})</div>
+            <div class="quality-bar-track">
+              <div class="quality-bar-fill" style="width: ${Math.min(100, qt.percentage).toFixed(1)}%; background: ${qt.color};"></div>
+            </div>
+          `;
+          qGrid.appendChild(box);
+        });
 
         // Breakdown Table
         document.getElementById('rowPrimaryCostLabel').innerText =

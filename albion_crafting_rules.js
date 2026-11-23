@@ -45,6 +45,39 @@
 
     const CITY_SPECIALTY_LPB = 0.15; // +15% LPB in matching Royal/Outland city
     const FOCUS_BONUS_LPB = 0.59;    // +59% LPB when using Focus
+    const FOCUS_QUALITY_BONUS = 50; // <CraftingQuality bonus="50" /> in gamedata.xml
+
+    /**
+     * Exact Crafting Salad quality bonuses verified from spells.json + items.json.
+     */
+    const SALADS = [
+      { id: 'none', name: 'None (+0 Quality)', bonus: 0 },
+      { id: 'bean_0', name: 'Bean Salad T2.0 (+33)', bonus: 33 },
+      { id: 'turnip_0', name: 'Turnip Salad T4.0 (+66)', bonus: 66 },
+      { id: 'turnip_1', name: 'Turnip Salad T4.1 (+82.5)', bonus: 82.5 },
+      { id: 'turnip_2', name: 'Turnip Salad T4.2 (+99)', bonus: 99 },
+      { id: 'turnip_3', name: 'Turnip Salad T4.3 (+115.5)', bonus: 115.5 },
+      { id: 'potato_0', name: 'Potato Salad T6.0 (+99)', bonus: 99 },
+      { id: 'potato_1', name: 'Potato Salad T6.1 (+115.5)', bonus: 115.5 },
+      { id: 'potato_2', name: 'Potato Salad T6.2 (+132)', bonus: 132 },
+      { id: 'potato_3', name: 'Potato Salad T6.3 (+148.5)', bonus: 148.5 },
+      { id: 'kraken_0', name: 'Kraken Salad T6.0 (+148.5)', bonus: 148.5 },
+      { id: 'kraken_1', name: 'Kraken Salad T6.1 (+173.25)', bonus: 173.25 },
+      { id: 'kraken_2', name: 'Kraken Salad T6.2 (+198)', bonus: 198 },
+      { id: 'kraken_3', name: 'Kraken Salad T6.3 (+222.75)', bonus: 222.75 },
+    ];
+
+    /**
+     * Verified base roll weights from gamedata.xml (<CraftingQualityChances>):
+     * 689 Normal, 250 Good, 50 Outstanding, 10 Excellent, 1 Masterpiece (total 1,000).
+     */
+    const QUALITY_TIERS = [
+      { id: 'normal', level: 1, name: 'Normal', weight: 689, baseProb: 0.689, color: '#d4d4d8' },
+      { id: 'good', level: 2, name: 'Good', weight: 250, baseProb: 0.250, color: '#60a5fa' },
+      { id: 'outstanding', level: 3, name: 'Outstanding', weight: 50, baseProb: 0.050, color: '#c084fc' },
+      { id: 'excellent', level: 4, name: 'Excellent', weight: 10, baseProb: 0.010, color: '#fb923c' },
+      { id: 'masterpiece', level: 5, name: 'Masterpiece', weight: 1, baseProb: 0.001, color: '#facc15' },
+    ];
 
     /**
      * Outlands Zone Quality (Q1 to Q6) global crafting LPB bonus.
@@ -718,6 +751,82 @@
       return Math.max(1, Math.round(calculateExactCraftingFocusCost(opts)));
     }
 
+    /**
+     * Crafting Quality bonus per level across items in a tree (0.75 for non-artifact / Avalonian, 0.375 for standard artifacts).
+     */
+    function getItemQualityCrossSpecWeight(item) {
+      return getItemCrossSpecWeight(item) * 0.025;
+    }
+
+    function calculateTreeQualityCrossSpecBonus(itemSpecs, treeId) {
+      if (!itemSpecs || !treeId) return 0;
+      return ITEMS
+        .filter((it) => it.treeId === treeId)
+        .reduce((sum, it) => {
+          const lvl = Math.min(Math.max(Number(itemSpecs[it.id]) || 0, 0), 100);
+          return sum + lvl * getItemQualityCrossSpecWeight(it);
+        }, 0);
+    }
+
+    /**
+     * Calculates exact probability of crafting each Quality tier (Normal .. Masterpiece).
+     * Albion grants `1 + totalQualityBonus / 100` independent rolls and keeps the highest roll.
+     * Fractional rolls interpolate linearly between `floor(rolls)` and `floor(rolls) + 1` rolls.
+     */
+    function calculateCraftingQualityChances({
+      mastery = 100,
+      spec = 100,
+      crossSpecQualityBonus = 0,
+      useFocus = false,
+      saladBonus = 0,
+    }) {
+      const m = Math.min(Math.max(Number(mastery) || 0, 0), 100);
+      const s = Math.min(Math.max(Number(spec) || 0, 0), 100);
+      const cQual = Math.max(0, Number(crossSpecQualityBonus) || 0);
+      const fQual = useFocus ? FOCUS_QUALITY_BONUS : 0;
+      const foodQual = Math.max(0, Number(saladBonus) || 0);
+
+      const masteryQuality = m * 0.75;
+      const activeSpecQuality = s * 6.0;
+      const totalQualityBonus = masteryQuality + activeSpecQuality + cQual + fQual + foodQual;
+
+      const totalRolls = 1 + totalQualityBonus / 100;
+      const k = Math.floor(totalRolls);
+      const frac = totalRolls - k;
+
+      const F = [0, 0.689, 0.939, 0.989, 0.999, 1.0];
+      const cdf = (q) => {
+        if (q <= 0) return 0;
+        if (q >= 5) return 1;
+        const f = F[q];
+        return (1 - frac) * Math.pow(f, k) + frac * Math.pow(f, k + 1);
+      };
+
+      const probs = QUALITY_TIERS.map((qt) => {
+        const prob = Math.max(0, cdf(qt.level) - cdf(qt.level - 1));
+        return {
+          ...qt,
+          probability: prob,
+          percentage: prob * 100,
+        };
+      });
+
+      return {
+        totalQualityBonus: Number(totalQualityBonus.toFixed(2)),
+        totalRolls: Number(totalRolls.toFixed(4)),
+        guaranteedExtraRolls: Math.max(0, k - 1),
+        extraRollChancePct: Number((frac * 100).toFixed(1)),
+        breakdown: {
+          masteryQuality,
+          activeSpecQuality,
+          crossQuality: cQual,
+          focusQuality: fQual,
+          foodQuality: foodQual,
+        },
+        tiers: probs,
+      };
+    }
+
     function calculateCraftingStationFee({
       item,
       tier = 4,
@@ -872,6 +981,8 @@
       spec = 100,
       crossSpec = 0,
       crossSpecFce = null,
+      crossSpecQualityBonus = null,
+      saladBonus = 0,
       feePer100Nutrition = 400,
       primaryMatPrice = 300,
       secondaryMatPrice = 300,
@@ -1000,6 +1111,17 @@
         ? unitCraftCost / (1 - marketFeeRate)
         : 0;
 
+      const effCrossQuality = crossSpecQualityBonus !== null && crossSpecQualityBonus !== undefined
+        ? crossSpecQualityBonus
+        : Math.min(Math.max(Number(crossSpec) || 0, 0), 800) * 0.75;
+      const qualityChances = calculateCraftingQualityChances({
+        mastery,
+        spec,
+        crossSpecQualityBonus: effCrossQuality,
+        useFocus,
+        saladBonus,
+      });
+
       return {
         item,
         tier: safeTier,
@@ -1053,6 +1175,7 @@
         silverPerFocus,
         unitCraftCost,
         breakEvenPrice,
+        qualityChances,
       };
     }
 
@@ -1130,6 +1253,9 @@
       CRAFTING_CITIES,
       CITY_SPECIALTY_LPB,
       FOCUS_BONUS_LPB,
+      FOCUS_QUALITY_BONUS,
+      SALADS,
+      QUALITY_TIERS,
       HIDEOUT_ZONE_QUALITY_LPB,
       HIDEOUT_POWER_GENERAL_LPB,
       HIDEOUT_POWER_SPECIALTY_LPB,
@@ -1147,9 +1273,12 @@
       getTotalMaterialsPerCraft,
       getItemCrossSpecWeight,
       calculateTreeCrossSpecFCE,
+      getItemQualityCrossSpecWeight,
+      calculateTreeQualityCrossSpecBonus,
       calculateCraftingRRR,
       calculateExactCraftingFocusCost,
       calculateCraftingFocusCost,
+      calculateCraftingQualityChances,
       calculateCraftingStationFee,
       calculateJournalMetrics,
       getMarketFeeRate,

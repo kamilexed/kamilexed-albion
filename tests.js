@@ -992,6 +992,37 @@ assert(
   `Druid6=${sim6Druid.totalFocusCost}, Fiend5=${sim5Fiend.totalFocusCost}`
 );
 
+// Verify Crafting Quality Probabilities (gamedata.xml weights + extra roll math)
+const qBase = C.calculateCraftingQualityChances({
+  mastery: 0,
+  spec: 0,
+  crossSpecQualityBonus: 0,
+  useFocus: false,
+  saladBonus: 0,
+});
+assert(
+  Math.abs(qBase.tiers[0].percentage - 68.9) < 0.01 &&
+  Math.abs(qBase.tiers[1].percentage - 25.0) < 0.01 &&
+  Math.abs(qBase.tiers[2].percentage - 5.0) < 0.01 &&
+  Math.abs(qBase.tiers[3].percentage - 1.0) < 0.01 &&
+  Math.abs(qBase.tiers[4].percentage - 0.1) < 0.01,
+  '0 Quality Bonus (1 roll) matches gamedata.xml base chances: 68.9% / 25.0% / 5.0% / 1.0% / 0.1%'
+);
+
+const qHigh = C.calculateCraftingQualityChances({
+  mastery: 100,
+  spec: 100,
+  crossSpecQualityBonus: 225, // 3 non-artifact siblings maxed
+  useFocus: true,
+  saladBonus: 148.5, // Kraken T6.0
+});
+const qSum = qHigh.tiers.reduce((s, t) => s + t.probability, 0);
+assert(
+  Math.abs(qSum - 1.0) < 1e-9 && qHigh.tiers[4].percentage > 1.0 && qHigh.totalRolls > 11,
+  'High-spec + Focus + Kraken Salad quality probabilities sum to 100% and raise Masterpiece > 1%',
+  `TotalQuality=+${qHigh.totalQualityBonus}, Rolls=${qHigh.totalRolls}, MP=${qHigh.tiers[4].percentage.toFixed(2)}%`
+);
+
 console.log('\n=====================================================');
 console.log(`TEST RESULTS: ${passedCount} PASSED, ${failedCount} FAILED`);
 console.log('=====================================================');
