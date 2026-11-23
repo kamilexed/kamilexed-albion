@@ -7,7 +7,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
   <script src="albion_rules.js?v=20261119-1"></script>
   <script src="albion_farming_rules.js?v=20261119-2"></script>
-  <script src="albion_crafting_rules.js?v=20261123-2"></script>
+  <script src="albion_crafting_rules.js?v=20261123-3"></script>
   <script src="albion_api.js?v=20261119-2"></script>
   <script src="albion_price_store.js?v=20261120-3"></script>
   <style>
@@ -561,6 +561,10 @@
         <span class="sidebar-link-icon">💰</span>
         <span class="sidebar-link-label">Prices</span>
       </a>
+      <a href="scanner.html" class="sidebar-link" title="Profit Scanner">
+        <span class="sidebar-link-icon">📊</span>
+        <span class="sidebar-link-label">Scanner</span>
+      </a>
     </nav>
   </aside>
 
@@ -575,6 +579,7 @@
             <button type="button" class="btn-toggle active" data-tab="resources">Raw &amp; Refined</button>
             <button type="button" class="btn-toggle" data-tab="hearts">Faction Hearts</button>
             <button type="button" class="btn-toggle" data-tab="journals">Crafting Journals</button>
+            <button type="button" class="btn-toggle" data-tab="food">Crafting Food</button>
             <button type="button" class="btn-toggle" data-tab="farming">Farming</button>
             <button type="button" class="btn-toggle" data-tab="equipment">Equipment &amp; Artifacts</button>
           </div>
@@ -599,7 +604,7 @@
 
         <div class="top-island-row">
           <div class="controls-cluster">
-            <input type="text" id="searchInput" class="search-input" placeholder="Filter by item name or ID...">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search items (scans all equipment trees)...">
             <select id="tierFilterSelect" class="pill-select" title="Filter items by Tier">
               <option value="all">All Tiers</option>
               <option value="1">Tier 1</option>
@@ -746,6 +751,11 @@
               defaultPrices.set(id, Math.round(matCost * 0.92 + artCost * 1.1));
             }
           }
+        });
+
+        // Crafting Food (Salads)
+        C.SALADS.forEach(sl => {
+          if (sl.itemId) defaultPrices.set(sl.itemId, sl.defaultPrice || 2000);
         });
       }
       seedDefaults();
@@ -1010,7 +1020,9 @@
           // Station row
           const l1 = document.createElement('div');
           l1.className = 'section-label';
-          l1.innerText = '1. Crafting Station';
+          l1.innerHTML = searchQuery.trim() !== ''
+            ? '1. Crafting Station <span style="color: var(--cyan); font-weight: 700; text-transform: none; margin-left: 6px;">(Search active: scanning all 31 equipment trees)</span>'
+            : '1. Crafting Station';
           subFilterBody.appendChild(l1);
 
           const g1 = document.createElement('div');
@@ -1230,10 +1242,52 @@
               },
             });
           });
+        } else if (activeTab === 'food') {
+          tableSectionTitle.innerText = 'Crafting Food — Salads (Tier 2 / Tier 4 / Tier 6 · .0–.3)';
+          pricesTableHead.innerHTML = `
+            <tr>
+              <th>Tier</th>
+              <th>Salad</th>
+              <th>Crafting Buff</th>
+              <th style="color: var(--success);">Salad Price</th>
+            </tr>
+          `;
+
+          C.SALADS.filter(sl => Boolean(sl.itemId)).forEach(sl => {
+            const tierMatch = sl.itemId.match(/^T(\d)_/);
+            const enchMatch = sl.itemId.match(/@(\d)$/);
+            const t = tierMatch ? Number(tierMatch[1]) : 4;
+            const e = enchMatch ? Number(enchMatch[1]) : 0;
+            if (!matchesTier(t)) return;
+            if (!matchesSearch(`T${t}.${e}`, sl.name, sl.itemId, `+${sl.bonus}`, `+${sl.speedPct}%`)) return;
+
+            rows.push({
+              tier: t,
+              enchant: e,
+              sortName: sl.name,
+              buildTr: () => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                  <td class="tier-badge">${formatTierEnchHtml(t, e)}</td>
+                  <td style="font-weight: 700; color: var(--text);">${sl.name.split(' (')[0]}</td>
+                  <td style="color: var(--success); font-family: monospace; font-weight: 700;">+${sl.bonus} Quality · +${sl.speedPct}% Speed</td>
+                `;
+                tr.appendChild(buildPriceCell({
+                  itemId: sl.itemId,
+                  label: sl.name.split(' (')[0],
+                  inputColor: 'var(--success)',
+                }));
+                return tr;
+              },
+            });
+          });
         } else if (activeTab === 'equipment') {
+          const isCrossTreeSearch = searchQuery.trim() !== '';
           const treeObj = C.TREES.find(t => t.id === selectedEquipTreeId) || C.TREES[0];
-          const treeItems = C.ITEMS.filter(i => i.treeId === treeObj.id);
-          tableSectionTitle.innerText = `${treeObj.name} — Equipment & Artifact Prices (T4–T8 · .${selectedEquipEnchant})`;
+          const targetItems = isCrossTreeSearch ? C.ITEMS : C.ITEMS.filter(i => i.treeId === treeObj.id);
+          tableSectionTitle.innerText = isCrossTreeSearch
+            ? `ALL EQUIPMENT TREES — Search "${searchQuery.trim()}" (T4–T8 · .${selectedEquipEnchant})`
+            : `${treeObj.name} — Equipment & Artifact Prices (T4–T8 · .${selectedEquipEnchant})`;
           pricesTableHead.innerHTML = `
             <tr>
               <th>Item</th>
@@ -1243,13 +1297,15 @@
             </tr>
           `;
 
-          treeItems.forEach(item => {
+          targetItems.forEach(item => {
+            const itemTree = C.TREES.find(tr => tr.id === item.treeId);
+            const treeLabel = itemTree ? itemTree.name : item.treeId;
             const effEnch = item.supportsEnchant === false ? 0 : selectedEquipEnchant;
             for (let t = 4; t <= 8; t++) {
               if (!matchesTier(t)) continue;
               const artId = C.getArtifactItemId(item, t);
               const outId = C.getCraftedItemId(item, t, effEnch);
-              if (!matchesSearch(`T${t}.${effEnch}`, item.name, item.artifactName, artId, outId)) return;
+              if (!matchesSearch(`T${t}.${effEnch}`, item.name, treeLabel, item.category, item.artifactName, artId, outId)) return;
 
               rows.push({
                 tier: t,
@@ -1257,10 +1313,13 @@
                 sortName: item.name,
                 buildTr: () => {
                   const tr = document.createElement('tr');
+                  const subParts = [];
+                  if (isCrossTreeSearch) subParts.push(`<span style="color: var(--cyan);">${treeLabel}</span>`);
+                  subParts.push(item.artifactCode ? `<span style="color: var(--purple);">${item.artifactName}</span>` : `Standard`);
                   tr.innerHTML = `
                     <td style="font-weight: 700; color: var(--text);">
                       ${item.name}
-                      ${item.artifactCode ? `<div class="hint-sub" style="color: var(--purple);">${item.artifactName}</div>` : `<div class="hint-sub">Standard</div>`}
+                      <div class="hint-sub">${subParts.join(' · ')}</div>
                     </td>
                     <td class="tier-badge">${formatTierEnchHtml(t, effEnch)}</td>
                   `;

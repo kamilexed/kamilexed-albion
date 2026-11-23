@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Albion Online — Profit Scanner</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+  <script src="albion_rules.js?v=20261119-1"></script>
+  <script src="albion_farming_rules.js?v=20261119-2"></script>
+  <script src="albion_crafting_rules.js?v=20261123-3"></script>
+  <script src="albion_api.js?v=20261119-2"></script>
+  <script src="albion_price_store.js?v=20261120-3"></script>
+  <style>
+    :root {
+      --bg: #000000;
+      --surface: #141312;
+      --surface-alt: #1c1a17;
+      --surface-well: #0c0b0a;
+      --surface-hover: #26221e;
+      --border: #d4751c;
+      --border-subtle: #383028;
+      --text: #f5f5f5;
+      --text-muted: #a8a29e;
+      --accent: #e07b1d;
+      --accent-active-bg: #3b2410;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #eab308;
+      --cyan: #38bdf8;
+      --purple: #c084fc;
+      --gold: #f59e0b;
+      --sidebar-collapsed: 58px;
+      --sidebar-expanded: 196px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) var(--surface-well);
+    }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: var(--surface-well); border-left: 1px solid var(--border-subtle); }
+    ::-webkit-scrollbar-thumb {
+      background: #443322;
+      border-radius: 5px;
+      border: 2px solid var(--surface-well);
+    }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+    ::-webkit-scrollbar-corner { background: var(--surface-well); }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      min-height: 100vh;
+      padding-left: var(--sidebar-collapsed);
+      transition: padding-left 0.2s ease;
+    }
+
+    body.sidebar-expanded { padding-left: var(--sidebar-expanded); }
+
+    .tier-color-2 { color: #d6d3d1 !important; }
+    .tier-color-3 { color: #6ee7b7 !important; }
+    .tier-color-4 { color: #60a5fa !important; }
+    .tier-color-5 { color: #f87171 !important; }
+    .tier-color-6 { color: #fb923c !important; }
+    .tier-color-7 { color: #facc15 !important; }
+    .tier-color-8 { color: #ffffff !important; }
+
+    .ench-color-0 { color: var(--text-muted) !important; }
+    .ench-color-1 { color: #22c55e !important; }
+    .ench-color-2 { color: #3b82f6 !important; }
+    .ench-color-3 { color: #a855f7 !important; }
+    .ench-color-4 { color: #eab308 !important; }
+
+    .left-sidebar {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      width: var(--sidebar-collapsed);
+      background: var(--surface);
+      border-right: 1.5px solid var(--border);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.2s ease;
+      overflow: hidden;
+    }
+    .left-sidebar.expanded { width: var(--sidebar-expanded); }
+
+    .sidebar-header {
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+    .sidebar-title {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      white-space: nowrap;
+      opacity: 0;
+      width: 0;
+      overflow: hidden;
+      transition: opacity 0.15s;
+    }
+    .left-sidebar.expanded .sidebar-title { opacity: 1; width: auto; }
+
+    .sidebar-toggle-btn {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      background: var(--surface-alt);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .sidebar-toggle-btn:hover { border-color: var(--border); color: var(--accent); }
+
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px 8px;
+      flex: 1;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 11px;
+      border-radius: 9px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      white-space: nowrap;
+      transition: all 0.12s;
+    }
+    .sidebar-link:hover { background: var(--surface-hover); color: var(--text); }
+    .sidebar-link.active {
+      background: var(--accent-active-bg);
+      color: var(--accent);
+      border-color: var(--border);
+    }
+    .sidebar-link-icon { font-size: 18px; width: 20px; text-align: center; flex-shrink: 0; }
+    .sidebar-link-label { opacity: 0; transition: opacity 0.15s; }
+    .left-sidebar.expanded .sidebar-link-label { opacity: 1; }
+
+    .main-shell {
+      width: 100%;
+      padding: 0 20px 32px 20px;
+    }
+
+    .sticky-top-wrapper {
+      position: sticky;
+      top: 0;
+      z-index: 150;
+      padding-top: 10px;
+      padding-bottom: 12px;
+      background: var(--bg);
+    }
+
+    .top-island {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .top-island-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .controls-cluster {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .btn-toggle, .pill-select {
+      background: var(--surface-alt);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      padding: 6px 11px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: all 0.12s;
+      font-family: inherit;
+    }
+    .btn-toggle:hover, .pill-select:hover { background: var(--surface-hover); border-color: var(--border); }
+    .btn-toggle.active {
+      background: var(--accent-active-bg);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    .pill-select { outline: none; }
+    .pill-select option { background: var(--surface); color: var(--text); }
+
+    .search-input {
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      color: var(--text);
+      padding: 6px 11px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      outline: none;
+      min-width: 210px;
+    }
+    .search-input:focus { border-color: var(--border); }
+
+    .btn-action {
+      background: var(--accent);
+      color: #000000;
+      border: 1px solid var(--border);
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .btn-action:hover { background: #f08a24; }
+    .btn-action:disabled { opacity: 0.6; cursor: wait; }
+
+    .btn-secondary {
+      background: var(--surface-well);
+      color: var(--text);
+      border: 1px solid var(--border-subtle);
+    }
+    .btn-secondary:hover { background: var(--surface-hover); border-color: var(--border); }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .kpi-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .kpi-val {
+      font-size: 19px;
+      font-weight: 800;
+      font-family: monospace;
+      color: var(--text);
+    }
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text);
+    }
+
+    .scanner-table-wrap { overflow-x: auto; }
+    .scanner-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .scanner-table th {
+      text-align: left;
+      padding: 8px 8px;
+      color: var(--text-muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1.5px solid var(--border);
+      white-space: nowrap;
+    }
+    .scanner-table td {
+      padding: 8px 8px;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: middle;
+    }
+    .scanner-table tbody tr:hover { background: var(--surface-alt); }
+
+    .item-cell {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 210px;
+    }
+    .item-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      border-radius: 7px;
+      object-fit: contain;
+      padding: 2px;
+      flex-shrink: 0;
+    }
+    .item-title { font-weight: 700; color: var(--text); font-size: 13px; }
+    .item-sub { font-size: 10px; color: var(--text-muted); }
+
+    .badge-type {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      border: 1px solid;
+      white-space: nowrap;
+    }
+    .badge-craft { color: var(--accent); border-color: var(--accent); background: rgba(224, 123, 29, 0.12); }
+    .badge-refine { color: var(--cyan); border-color: var(--cyan); background: rgba(56, 189, 248, 0.12); }
+    .badge-farm { color: var(--success); border-color: var(--success); background: rgba(34, 197, 94, 0.12); }
+
+    .price-age {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      font-family: monospace;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+    .age-fresh { color: var(--success); background: rgba(34, 197, 94, 0.12); }
+    .age-moderate { color: var(--warning); background: rgba(234, 179, 8, 0.12); }
+    .age-stale { color: var(--text-muted); background: rgba(168, 162, 158, 0.12); }
+
+    .text-pos { color: var(--success); font-weight: 800; }
+    .text-neg { color: var(--danger); font-weight: 800; }
+    .mono { font-family: monospace; }
+
+    .btn-open {
+      background: var(--surface-well);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-open:hover { background: var(--accent); color: #000000; }
+
+    .progress-bar-wrap {
+      display: none;
+      width: 100%;
+      height: 5px;
+      background: var(--surface-well);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 2px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.2s ease;
+    }
+  </style>
+</head>
+<body>
+
+  <aside id="leftSidebar" class="left-sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Tools</span>
+      <button id="sidebarToggleBtn" class="sidebar-toggle-btn" type="button" title="Expand/Collapse Menu">
+        ☰
+      </button>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="refining.html" class="sidebar-link" title="Refining Calculator">
+        <span class="sidebar-link-icon">🔨</span>
+        <span class="sidebar-link-label">Refining</span>
+      </a>
+      <a href="farming.html" class="sidebar-link" title="Farming Calculator">
+        <span class="sidebar-link-icon">🌱</span>
+        <span class="sidebar-link-label">Farming</span>
+      </a>
+      <a href="crafting.html" class="sidebar-link" title="Crafting Calculator">
+        <span class="sidebar-link-icon">⚔️</span>
+        <span class="sidebar-link-label">Crafting</span>
+      </a>
+      <a href="prices.html" class="sidebar-link" title="Global Item Prices">
+        <span class="sidebar-link-icon">💰</span>
+        <span class="sidebar-link-label">Prices</span>
+      </a>
+      <a href="scanner.html" class="sidebar-link active" title="Profit Scanner">
+        <span class="sidebar-link-icon">📊</span>
+        <span class="sidebar-link-label">Scanner</span>
+      </a>
+    </nav>
+  </aside>
+
+  <div class="main-shell">
+    <div class="sticky-top-wrapper">
+      <header class="top-island">
+        <div class="top-island-row">
+          <div class="controls-cluster" id="modeTabGroup">
+            <button type="button" class="btn-toggle active" data-mode="all">🌐 All Combined</button>
+            <button type="button" class="btn-toggle" data-mode="crafting">⚔️ Equipment Crafting</button>
+            <button type="button" class="btn-toggle" data-mode="refining">🔨 Refining</button>
+            <button type="button" class="btn-toggle" data-mode="farming">🌱 Farming</button>
+          </div>
+
+          <div class="controls-cluster">
+            <button id="premiumToggle" class="btn-toggle active" type="button">Premium: ON (4%)</button>
+            <button id="buyOrderToggle" class="btn-toggle active" type="button">Buy: Order (2.5%)</button>
+            <button id="orderTypeToggle" class="btn-toggle active" type="button">Sell: Order (6.5%)</button>
+            <button id="focusToggle" class="btn-toggle active" type="button">⚡ Focus: ON</button>
+            <button id="journalToggle" class="btn-toggle active" type="button">Journals: ON</button>
+            <button id="qualityPricingToggle" class="btn-toggle" type="button" title="ON: Weight Crafting Q1–Q5 prices by your Quality Roll probability">Quality EV: OFF</button>
+          </div>
+        </div>
+
+        <div class="top-island-row">
+          <div class="controls-cluster">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search item, tree, city...">
+
+            <select id="tierFilterSelect" class="pill-select" title="Filter tier">
+              <option value="all">Tiers: T4–T8 (All)</option>
+              <option value="2">Tier 2</option>
+              <option value="3">Tier 3</option>
+              <option value="4">Tier 4</option>
+              <option value="5">Tier 5</option>
+              <option value="6">Tier 6</option>
+              <option value="7">Tier 7</option>
+              <option value="8">Tier 8</option>
+            </select>
+
+            <select id="enchFilterSelect" class="pill-select" title="Filter enchantment">
+              <option value="all">Ench: .0–.3</option>
+              <option value="0">.0 Common</option>
+              <option value="1">.1 Uncommon</option>
+              <option value="2">.2 Rare</option>
+              <option value="3">.3 Exceptional</option>
+              <option value="4">.4 Pristine</option>
+            </select>
+
+            <select id="stationFilterSelect" class="pill-select" title="Filter Crafting Station / Tree" style="color: var(--cyan);">
+              <option value="all">All Trees &amp; Stations</option>
+            </select>
+
+            <select id="batchModeSelect" class="pill-select" title="Compare opportunities per Craft Batch or 10k Daily Focus Pool">
+              <option value="focus_10k">Compare: 10,000 Focus (1 Day)</option>
+              <option value="focus_30k">Compare: 30,000 Focus (3 Days)</option>
+              <option value="unit_10">Compare: 10 Items / 5 Plots</option>
+            </select>
+
+            <select id="saladFilterSelect" class="pill-select" style="color: var(--success);" title="Crafting food buff & cost deduction"></select>
+
+            <select id="sortSelect" class="pill-select" style="color: var(--gold);">
+              <option value="netProfit">Sort: Net Profit</option>
+              <option value="silverPerFocus">Sort: Silver / Focus</option>
+              <option value="roi">Sort: ROI %</option>
+              <option value="profitPerCraft">Sort: Profit / Unit</option>
+              <option value="cost">Sort: Lowest Capital Cost</option>
+            </select>
+          </div>
+
+          <div class="controls-cluster">
+            <select id="cityFetchSelect" class="pill-select" title="Royal city used for Europe AODP live prices">
+              <option value="">All Royal Cities (EU)</option>
+              <option value="Thetford">Thetford (EU)</option>
+              <option value="Fort Sterling">Fort Sterling (EU)</option>
+              <option value="Lymhurst">Lymhurst (EU)</option>
+              <option value="Bridgewatch">Bridgewatch (EU)</option>
+              <option value="Martlock">Martlock (EU)</option>
+              <option value="Caerleon">Caerleon (EU)</option>
+              <option value="Brecilien">Brecilien (EU)</option>
+            </select>
+
+            <button id="fetchScannerBtn" class="btn-action" type="button" title="Fetch Europe AODP market prices for the currently filtered items">
+              Fetch Prices (EU)
+            </button>
+          </div>
+        </div>
+        <div id="fetchProgressWrap" class="progress-bar-wrap">
+          <div id="fetchProgressFill" class="progress-bar-fill"></div>
+        </div>
+      </header>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Top Profitable Opportunity</div>
+        <div id="kpiTopName" class="kpi-val" style="font-size: 16px;">—</div>
+        <div id="kpiTopSub" class="kpi-sub">Scanning local + saved prices...</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Best Net Profit (Filtered)</div>
+        <div id="kpiBestProfit" class="kpi-val text-pos">+0 s</div>
+        <div id="kpiBestProfitSub" class="kpi-sub">ROI &amp; Silver/Focus</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Profitable Matches</div>
+        <div id="kpiMatchCount" class="kpi-val" style="color: var(--cyan);">0 / 0</div>
+        <div id="kpiMatchSub" class="kpi-sub">Using Destiny Board Specs from localStorage</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Price Coverage</div>
+        <div id="kpiCoverage" class="kpi-val" style="color: var(--gold);">0 Live EU</div>
+        <div id="kpiCoverageSub" class="kpi-sub">Synced live via AlbionPriceStore</div>
+      </div>
+    </div>
+
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2 id="scannerTableTitle" class="card-title">Profit Scanner Leaderboard</h2>
+          <div id="scannerTableSub" style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+            Automatically evaluates your saved Destiny Board specs + global AlbionPriceStore prices + crafting food cost deduction.
+          </div>
+        </div>
+        <div id="scannerLimitNote" style="font-size: 11px; color: var(--text-muted); font-family: monospace;">Showing top 150 rows</div>
+      </div>
+
+      <div class="scanner-table-wrap">
+        <table class="scanner-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Type</th>
+              <th>Item &amp; Bonus City</th>
+              <th>Tier</th>
+              <th>Batch / RRR</th>
+              <th>Prod. Cost</th>
+              <th>Sell Price</th>
+              <th>ROI %</th>
+              <th>Silver / FP</th>
+              <th>Net Profit</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="scannerTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      const R = window.AlbionRules;
+      const F = window.AlbionFarmingRules;
+      const C = window.AlbionCraftingRules;
+      const API = window.AlbionApi;
+      const PS = window.AlbionPriceStore;
+      const SERVER = 'europe';
+      const UI_STATE_KEY = 'ALBION_SCANNER_UI_V1';
+
+      // Specs storage keys matching Refining, Farming & Crafting
+      let craftingTreeMasteries = {};
+      let craftingItemSpecs = {};
+      C.TREES.forEach(t => { craftingTreeMasteries[t.id] = 100; });
+      C.ITEMS.forEach(i => { craftingItemSpecs[i.id] = 100; });
+      try {
+        const rawCraftSpecs = localStorage.getItem('ALBION_CRAFTING_SPECS_V2');
+        if (rawCraftSpecs) {
+          const parsed = JSON.parse(rawCraftSpecs);
+          if (parsed.treeMasteries) craftingTreeMasteries = { ...craftingTreeMasteries, ...parsed.treeMasteries };
+          if (parsed.itemSpecs) craftingItemSpecs = { ...craftingItemSpecs, ...parsed.itemSpecs };
+        }
+      } catch (e) {}
+
+      let refiningSpecsByRes = {};
+      R.RESOURCES.forEach(r => { refiningSpecsByRes[r.id] = { 4: 100, 5: 100, 6: 100, 7: 100, 8: 100 }; });
+      try {
+        const rawRefSpecs = localStorage.getItem('ALBION_REFINING_SPECS_V3');
+        if (rawRefSpecs) {
+          const parsed = JSON.parse(rawRefSpecs);
+          if (parsed.specsByResource) {
+            R.RESOURCES.forEach(r => {
+              if (parsed.specsByResource[r.id]) {
+                refiningSpecsByRes[r.id] = { ...refiningSpecsByRes[r.id], ...parsed.specsByResource[r.id] };
+              }
+            });
+          }
+        }
+      } catch (e) {}
+
+      let farmingMasteries = { crops: 100, herbs: 100 };
+      let farmingItemSpecs = {};
+      F.ITEMS.forEach(i => { farmingItemSpecs[i.id] = 100; });
+      try {
+        const rawFarmSpecs = localStorage.getItem('ALBION_FARMING_SPECS_V1');
+        if (rawFarmSpecs) {
+          const parsed = JSON.parse(rawFarmSpecs);
+          if (parsed.masteries) farmingMasteries = { ...farmingMasteries, ...parsed.masteries };
+          if (parsed.itemSpecs) farmingItemSpecs = { ...farmingItemSpecs, ...parsed.itemSpecs };
+        }
+      } catch (e) {}
+
+      // Baseline defaults (same baseline curves as prices.html & calculators)
+      const BASE_RAW_CURVE = {
+        2: [12], 3: [25],
+        4: [50, 115, 290, 740, 2100],
+        5: [140, 350, 900, 2400, 7200],
+        6: [400, 1050, 2750, 7000, 21000],
+        7: [1200, 3100, 8200, 21500, 65000],
+        8: [3800, 9600, 25500, 68000, 205000],
+      };
+      const BASE_REFINED_CURVE = {
+        2: [18], 3: [42],
+        4: [140, 280, 680, 1750, 4800],
+        5: [460, 1100, 2850, 7400, 22000],
+        6: [1650, 4300, 11000, 28500, 86000],
+        7: [6500, 17000, 45000, 118000, 350000],
+        8: [24000, 61000, 162000, 425000, 1280000],
+      };
+      const BASE_MAT_EST = { 4: 320, 5: 950, 6: 2600, 7: 6800, 8: 18500 };
+      const ENCH_MULT = { 0: 1, 1: 2.1, 2: 4.5, 3: 11.0, 4: 28.0 };
+      const ARTIFACT_EST = { 4: 4500, 5: 14000, 6: 42000, 7: 125000, 8: 340000 };
+      const EMPTY_JOURNAL_EST = { 4: 3600, 5: 7200, 6: 14400, 7: 28800, 8: 57600 };
+      const FULL_JOURNAL_EST = { 4: 11500, 5: 24500, 6: 54000, 7: 118000, 8: 255000 };
+      const QUALITY_MULT = { 1: 1.0, 2: 1.04, 3: 1.12, 4: 1.30, 5: 2.0 };
+
+      const defaultPrices = new Map();
+      R.RESOURCES.forEach(res => {
+        if (res.heartId) defaultPrices.set(res.heartId, 40000);
+        [2, 3, 4, 5, 6, 7, 8].forEach(t => {
+          const enchs = (t <= 3 || res.id === 'stone') ? [0] : [0, 1, 2, 3, 4];
+          enchs.forEach(e => {
+            defaultPrices.set(R.getItemId(res.rawPrefix, t, e), BASE_RAW_CURVE[t][e]);
+            defaultPrices.set(R.getItemId(res.refinedPrefix, t, e), BASE_REFINED_CURVE[t][e]);
+          });
+        });
+      });
+      F.ITEMS.forEach(item => {
+        defaultPrices.set(item.seedId, item.defaultSeedPrice);
+        defaultPrices.set(item.productId, item.defaultProductPrice);
+      });
+      C.CATEGORIES.forEach(cat => {
+        for (let t = 4; t <= 8; t++) {
+          const jIds = C.getJournalItemIds(cat.id, t);
+          defaultPrices.set(jIds.emptyId, EMPTY_JOURNAL_EST[t]);
+          defaultPrices.set(jIds.fullId, FULL_JOURNAL_EST[t]);
+        }
+      });
+      C.ITEMS.forEach(item => {
+        const totalMats = C.getTotalMaterialsPerCraft(item);
+        for (let t = 4; t <= 8; t++) {
+          if (item.artifactCode) defaultPrices.set(C.getArtifactItemId(item, t), ARTIFACT_EST[t]);
+          const maxE = item.supportsEnchant === false ? 0 : 4;
+          for (let e = 0; e <= maxE; e++) {
+            const id = C.getCraftedItemId(item, t, e);
+            const matCost = totalMats * BASE_MAT_EST[t] * ENCH_MULT[e];
+            const artCost = item.artifactCode ? ARTIFACT_EST[t] : 0;
+            defaultPrices.set(id, Math.round(matCost * 0.92 + artCost * 1.1));
+          }
+        }
+      });
+      C.SALADS.forEach(sl => {
+        if (sl.itemId) defaultPrices.set(sl.itemId, sl.defaultPrice || 2000);
+      });
+
+      const priceMap = new Map();
+      function reloadPriceMap() {
+        priceMap.clear();
+        defaultPrices.forEach((val, id) => {
+          priceMap.set(id, { price: val, age: { text: 'Est.', category: 'moderate' } });
+        });
+        if (PS) PS.applyToMap(priceMap);
+      }
+      reloadPriceMap();
+
+      function getPriceEntry(itemId) {
+        return priceMap.get(itemId) || { price: 0, age: { text: 'Est.', category: 'moderate' } };
+      }
+
+      // State
+      let scanMode = 'all'; // 'all' | 'crafting' | 'refining' | 'farming'
+      let hasPremium = true;
+      let buyOrderType = 'buy_order';
+      let orderType = 'sell_order';
+      let useFocus = true;
+      let useJournals = true;
+      let useQualityPricing = false;
+      let searchQuery = '';
+      let tierFilter = 'all';
+      let enchFilter = 'all'; // 'all' allows .0-.3 (or .4 when explicitly chosen)
+      let stationFilter = 'all';
+      let batchMode = 'focus_10k';
+      let selectedSaladId = 'none';
+      let sortBy = 'netProfit';
+      let fetchCity = '';
+
+      // DOM Refs
+      const leftSidebar = document.getElementById('leftSidebar');
+      const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+      const modeTabGroup = document.getElementById('modeTabGroup');
+      const premiumToggle = document.getElementById('premiumToggle');
+      const buyOrderToggle = document.getElementById('buyOrderToggle');
+      const orderTypeToggle = document.getElementById('orderTypeToggle');
+      const focusToggle = document.getElementById('focusToggle');
+      const journalToggle = document.getElementById('journalToggle');
+      const qualityPricingToggle = document.getElementById('qualityPricingToggle');
+      const searchInput = document.getElementById('searchInput');
+      const tierFilterSelect = document.getElementById('tierFilterSelect');
+      const enchFilterSelect = document.getElementById('enchFilterSelect');
+      const stationFilterSelect = document.getElementById('stationFilterSelect');
+      const batchModeSelect = document.getElementById('batchModeSelect');
+      const saladFilterSelect = document.getElementById('saladFilterSelect');
+      const sortSelect = document.getElementById('sortSelect');
+      const cityFetchSelect = document.getElementById('cityFetchSelect');
+      const fetchScannerBtn = document.getElementById('fetchScannerBtn');
+      const fetchProgressWrap = document.getElementById('fetchProgressWrap');
+      const fetchProgressFill = document.getElementById('fetchProgressFill');
+      const scannerTableBody = document.getElementById('scannerTableBody');
+
+      // Populate station & food selects
+      C.CATEGORIES.forEach(cat => {
+        const og = document.createElement('optgroup');
+        og.label = cat.name;
+        const optCat = document.createElement('option');
+        optCat.value = `cat:${cat.id}`;
+        optCat.textContent = `${cat.name} (All Trees)`;
+        og.appendChild(optCat);
+        C.TREES.filter(t => t.category === cat.id).forEach(t => {
+          const o = document.createElement('option');
+          o.value = `tree:${t.id}`;
+          o.textContent = `↳ ${t.name}`;
+          og.appendChild(o);
+        });
+        stationFilterSelect.appendChild(og);
+      });
+
+      C.SALADS.forEach(sl => {
+        const opt = document.createElement('option');
+        opt.value = sl.id;
+        opt.textContent = `Food: ${sl.name}`;
+        saladFilterSelect.appendChild(opt);
+      });
+
+      function saveUiState() {
+        try {
+          localStorage.setItem(UI_STATE_KEY, JSON.stringify({
+            scanMode, hasPremium, buyOrderType, orderType, useFocus, useJournals, useQualityPricing,
+            tierFilter, enchFilter, stationFilter, batchMode, selectedSaladId, sortBy, fetchCity,
+            sidebarExpanded: leftSidebar.classList.contains('expanded'),
+          }));
+        } catch (e) {}
+      }
+
+      function loadUiState() {
+        try {
+          const raw = localStorage.getItem(UI_STATE_KEY);
+          if (!raw) return;
+          const s = JSON.parse(raw);
+          if (!s) return;
+          if (['all', 'crafting', 'refining', 'farming'].includes(s.scanMode)) scanMode = s.scanMode;
+          if (typeof s.hasPremium === 'boolean') hasPremium = s.hasPremium;
+          if (s.buyOrderType === 'buy_order' || s.buyOrderType === 'instant_buy') buyOrderType = s.buyOrderType;
+          if (s.orderType === 'sell_order' || s.orderType === 'instant_sell') orderType = s.orderType;
+          if (typeof s.useFocus === 'boolean') useFocus = s.useFocus;
+          if (typeof s.useJournals === 'boolean') useJournals = s.useJournals;
+          if (typeof s.useQualityPricing === 'boolean') useQualityPricing = s.useQualityPricing;
+          if (s.tierFilter) tierFilter = String(s.tierFilter);
+          if (s.enchFilter) enchFilter = String(s.enchFilter);
+          if (s.stationFilter) stationFilter = String(s.stationFilter);
+          if (s.batchMode) batchMode = String(s.batchMode);
+          if (s.selectedSaladId && C.SALADS.some(sl => sl.id === s.selectedSaladId)) selectedSaladId = s.selectedSaladId;
+          if (s.sortBy) sortBy = String(s.sortBy);
+          if (typeof s.fetchCity === 'string') fetchCity = s.fetchCity;
+          if (typeof s.sidebarExpanded === 'boolean') {
+            leftSidebar.classList.toggle('expanded', s.sidebarExpanded);
+            document.body.classList.toggle('sidebar-expanded', s.sidebarExpanded);
+            sidebarToggleBtn.innerText = s.sidebarExpanded ? '✕' : '☰';
+          }
+        } catch (e) {}
+      }
+      loadUiState();
+
+      sidebarToggleBtn.onclick = () => {
+        const expanded = leftSidebar.classList.toggle('expanded');
+        document.body.classList.toggle('sidebar-expanded', expanded);
+        sidebarToggleBtn.innerText = expanded ? '✕' : '☰';
+        saveUiState();
+      };
+
+      function syncTopControls() {
+        modeTabGroup.querySelectorAll('button[data-mode]').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.mode === scanMode);
+        });
+        const sellTaxPct = (C.getMarketFeeRate({ hasPremium, orderType, directTrade: false }) * 100).toFixed(1).replace(/\.0$/, '');
+        const buyTaxPct = (C.getBuyFeeRate({ buyOrderType }) * 100).toFixed(1).replace(/\.0$/, '');
+
+        premiumToggle.className = 'btn-toggle' + (hasPremium ? ' active' : '');
+        premiumToggle.innerHTML = `Premium: <span style="color: ${hasPremium ? 'var(--gold)' : 'var(--danger)'};">${hasPremium ? 'ON (4%)' : 'OFF (8%)'}</span>`;
+
+        buyOrderToggle.className = 'btn-toggle' + (buyOrderType === 'buy_order' ? ' active' : '');
+        buyOrderToggle.innerHTML = `Buy: <span style="color: ${buyOrderType === 'buy_order' ? 'var(--accent)' : 'var(--success)'};">${buyOrderType === 'buy_order' ? `Order (${buyTaxPct}%)` : `Instant (${buyTaxPct}%)`}</span>`;
+
+        orderTypeToggle.className = 'btn-toggle' + (orderType === 'sell_order' ? ' active' : '');
+        orderTypeToggle.innerHTML = `Sell: <span style="color: var(--accent);">${orderType === 'sell_order' ? `Order (${sellTaxPct}%)` : `Instant (${sellTaxPct}%)`}</span>`;
+
+        focusToggle.className = 'btn-toggle' + (useFocus ? ' active' : '');
+        focusToggle.innerHTML = `⚡ Focus: <span style="color: ${useFocus ? 'var(--cyan)' : 'var(--text-muted)'};">${useFocus ? 'ON' : 'OFF'}</span>`;
+
+        journalToggle.className = 'btn-toggle' + (useJournals ? ' active' : '');
+        journalToggle.innerHTML = `Journals: <span style="color: ${useJournals ? 'var(--gold)' : 'var(--text-muted)'};">${useJournals ? 'ON' : 'OFF'}</span>`;
+
+        qualityPricingToggle.className = 'btn-toggle' + (useQualityPricing ? ' active' : '');
+        qualityPricingToggle.innerHTML = `Quality EV: <span style="color: ${useQualityPricing ? 'var(--success)' : 'var(--text-muted)'};">${useQualityPricing ? 'ON (Q1-Q5)' : 'OFF'}</span>`;
+
+        tierFilterSelect.value = tierFilter;
+        enchFilterSelect.value = enchFilter;
+        stationFilterSelect.value = stationFilter;
+        batchModeSelect.value = batchMode;
+        saladFilterSelect.value = selectedSaladId;
+        sortSelect.value = sortBy;
+        cityFetchSelect.value = fetchCity;
+      }
+
+      modeTabGroup.querySelectorAll('button[data-mode]').forEach(btn => {
+        btn.onclick = () => { scanMode = btn.dataset.mode; saveUiState(); render(); };
+      });
+      premiumToggle.onclick = () => { hasPremium = !hasPremium; saveUiState(); render(); };
+      buyOrderToggle.onclick = () => { buyOrderType = buyOrderType === 'buy_order' ? 'instant_buy' : 'buy_order'; saveUiState(); render(); };
+      orderTypeToggle.onclick = () => { orderType = orderType === 'sell_order' ? 'instant_sell' : 'sell_order'; saveUiState(); render(); };
+      focusToggle.onclick = () => { useFocus = !useFocus; saveUiState(); render(); };
+      journalToggle.onclick = () => { useJournals = !useJournals; saveUiState(); render(); };
+      qualityPricingToggle.onclick = () => { useQualityPricing = !useQualityPricing; saveUiState(); render(); };
+
+      searchInput.oninput = (e) => { searchQuery = e.target.value; render(); };
+      tierFilterSelect.onchange = (e) => { tierFilter = e.target.value; saveUiState(); render(); };
+      enchFilterSelect.onchange = (e) => { enchFilter = e.target.value; saveUiState(); render(); };
+      stationFilterSelect.onchange = (e) => { stationFilter = e.target.value; saveUiState(); render(); };
+      batchModeSelect.onchange = (e) => { batchMode = e.target.value; saveUiState(); render(); };
+      saladFilterSelect.onchange = (e) => { selectedSaladId = e.target.value; saveUiState(); render(); };
+      sortSelect.onchange = (e) => { sortBy = e.target.value; saveUiState(); render(); };
+      cityFetchSelect.onchange = (e) => { fetchCity = e.target.value; saveUiState(); };
+
+      function formatTierEnchHtml(tier, enchant) {
+        return `<span class="tier-color-${tier}">T${tier}</span><span class="ench-color-${enchant}">.${enchant}</span>`;
+      }
+
+      function computeAllOpportunities() {
+        const opportunities = [];
+        const marketFeeRate = C.getMarketFeeRate({ hasPremium, orderType, directTrade: false });
+        const buyFeeRate = C.getBuyFeeRate({ buyOrderType });
+        const qStr = searchQuery.trim().toLowerCase();
+        const focusBudget = batchMode === 'focus_30k' ? 30000 : (batchMode === 'focus_10k' ? 10000 : 0);
+
+        const activeSalad = C.SALADS.find(sl => sl.id === selectedSaladId) || C.SALADS[0];
+        const saladEntry = activeSalad && activeSalad.itemId ? getPriceEntry(activeSalad.itemId) : null;
+        const saladPrice = saladEntry ? saladEntry.price : 0;
+
+        const matchesFilters = (type, tier, ench, ...searchFields) => {
+          if (tierFilter !== 'all' && Number(tierFilter) !== tier) return false;
+          if (enchFilter !== 'all' && Number(enchFilter) !== ench) return false;
+          if (enchFilter === 'all' && ench === 4 && type !== 'farming') return false; // exclude rare .4 unless requested
+          if (!qStr) return true;
+          return searchFields.some(f => String(f || '').toLowerCase().includes(qStr));
+        };
+
+        // 1. Equipment Crafting Scanner
+        if (scanMode === 'all' || scanMode === 'crafting') {
+          C.ITEMS.forEach(item => {
+            if (stationFilter.startsWith('cat:')) {
+              const catId = stationFilter.slice(4);
+              if (item.category !== catId) return;
+            } else if (stationFilter.startsWith('tree:')) {
+              const tId = stationFilter.slice(5);
+              if (item.treeId !== tId) return;
+            }
+            const treeObj = C.TREES.find(t => t.id === item.treeId);
+            const bonusCityObj = C.CRAFTING_CITIES.find(c => c.id === item.bonusCity) || C.CRAFTING_CITIES[0];
+            const m = craftingTreeMasteries[item.treeId] ?? 100;
+            const sp = craftingItemSpecs[item.id] ?? 100;
+            const cs = C.ITEMS
+              .filter(o => o.treeId === item.treeId && o.id !== item.id)
+              .reduce((acc, o) => acc + (Number(craftingItemSpecs[o.id]) || 0), 0);
+            const crossSpecFce = C.calculateTreeCrossSpecFCE(craftingItemSpecs, item.treeId);
+            const crossSpecQualityBonus = C.calculateTreeQualityCrossSpecBonus(craftingItemSpecs, item.treeId);
+
+            const maxE = item.supportsEnchant === false ? 0 : 4;
+            for (let t = 4; t <= 8; t++) {
+              for (let e = 0; e <= maxE; e++) {
+                if (!matchesFilters('crafting', t, e, item.name, treeObj ? treeObj.name : '', item.category, bonusCityObj.name, `T${t}.${e}`, item.artifactName)) continue;
+
+                const pId = C.getMaterialItemId(item.primaryMat, t, e);
+                const sId = item.secondaryMat ? C.getMaterialItemId(item.secondaryMat, t, e) : null;
+                const artId = C.getArtifactItemId(item, t);
+                const jIds = C.getJournalItemIds(item.category, t);
+                const outId = C.getCraftedItemId(item, t, e);
+
+                const pEntry = getPriceEntry(pId);
+                const sEntry = sId ? getPriceEntry(sId) : null;
+                const artEntry = artId ? getPriceEntry(artId) : null;
+                const ejEntry = getPriceEntry(jIds.emptyId);
+                const fjEntry = getPriceEntry(jIds.fullId);
+                const outEntry = getPriceEntry(outId);
+
+                const qPrices = {};
+                if (useQualityPricing) {
+                  for (let q = 1; q <= 5; q++) {
+                    const qKey = `${outId}__Q${q}`;
+                    if (priceMap.has(qKey)) {
+                      qPrices[q] = priceMap.get(qKey).price;
+                    } else {
+                      qPrices[q] = Math.round(outEntry.price * QUALITY_MULT[q]);
+                    }
+                  }
+                }
+
+                let qty = 10;
+                if (useFocus && focusBudget > 0) {
+                  qty = Math.max(1, C.fitBatchToCraftingFocus({
+                    focusPool: focusBudget,
+                    item,
+                    tier: t,
+                    enchantment: e,
+                    cityId: bonusCityObj.id,
+                    compound: true,
+                    mastery: m,
+                    spec: sp,
+                    crossSpec: cs,
+                    crossSpecFce,
+                  }));
+                }
+
+                const sim = C.simulateCrafting({
+                  itemId: item.id,
+                  tier: t,
+                  enchantment: e,
+                  cityId: bonusCityObj.id,
+                  useFocus,
+                  compound: true,
+                  useJournals,
+                  quantity: qty,
+                  mastery: m,
+                  spec: sp,
+                  crossSpec: cs,
+                  crossSpecFce,
+                  crossSpecQualityBonus,
+                  saladId: selectedSaladId,
+                  saladBonus: activeSalad ? activeSalad.bonus : 0,
+                  saladSpeedPct: activeSalad ? activeSalad.speedPct : 0,
+                  saladPrice,
+                  feePer100Nutrition: 400,
+                  primaryMatPrice: pEntry.price,
+                  secondaryMatPrice: sEntry ? sEntry.price : 0,
+                  artifactPrice: artEntry ? artEntry.price : 0,
+                  emptyJournalPrice: ejEntry.price,
+                  fullJournalPrice: fjEntry.price,
+                  outputPrice: outEntry.price,
+                  useQualityPricing,
+                  qualityPrices: qPrices,
+                  marketFeeRate,
+                  buyFeeRate,
+                });
+
+                const fetchIds = [pId, outId];
+                if (sId) fetchIds.push(sId);
+                if (artId) fetchIds.push(artId);
+                if (useJournals) { fetchIds.push(jIds.emptyId, jIds.fullId); }
+                if (activeSalad && activeSalad.itemId) fetchIds.push(activeSalad.itemId);
+
+                opportunities.push({
+                  discipline: 'crafting',
+                  labelType: 'Craft',
+                  badgeClass: 'badge-craft',
+                  itemId: outId,
+                  name: item.name,
+                  subText: `${treeObj ? treeObj.name : item.category} · ${bonusCityObj.name}`,
+                  tier: t,
+                  enchant: e,
+                  cityLabel: bonusCityObj.name,
+                  batchLabel: `${sim.totalCrafts.toLocaleString()} crafts · RRR ${sim.rrr.percentage.toFixed(1)}%`,
+                  productionCost: sim.totalProductionCost,
+                  unitCraftCost: sim.unitCraftCost,
+                  sellPrice: useQualityPricing ? sim.expectedUnitSellPrice : outEntry.price,
+                  sellSubLabel: useQualityPricing ? 'Weighted EV' : outEntry.age.text,
+                  sellAge: outEntry.age,
+                  roi: sim.profitMargin,
+                  silverPerFocus: sim.silverPerFocus,
+                  profitPerUnit: sim.profitPerCraft,
+                  netProfit: sim.netProfit,
+                  fetchIds,
+                  openAction: () => {
+                    try {
+                      const prev = JSON.parse(localStorage.getItem('ALBION_CRAFTING_SESSION_V2') || '{}');
+                      localStorage.setItem('ALBION_CRAFTING_SESSION_V2', JSON.stringify({
+                        ...prev,
+                        category: item.category,
+                        treeId: item.treeId,
+                        itemId: item.id,
+                        tier: t,
+                        enchant: e,
+                        cityId: bonusCityObj.id,
+                        hasPremium,
+                        buyOrderType,
+                        orderType,
+                        useFocus,
+                        useJournals,
+                        saladId: selectedSaladId,
+                        useQualityPricing,
+                        quantity: qty,
+                      }));
+                    } catch (err) {}
+                    window.location.href = 'crafting.html';
+                  },
+                });
+              }
+            }
+          });
+        }
+
+        // 2. Refining Scanner
+        if ((scanMode === 'all' || scanMode === 'refining') && !stationFilter.startsWith('cat:') && !stationFilter.startsWith('tree:')) {
+          R.RESOURCES.forEach(res => {
+            const rSpecs = refiningSpecsByRes[res.id] || { 4: 100, 5: 100, 6: 100, 7: 100, 8: 100 };
+            const cityObj = R.CITIES.find(c => c.id === res.bonusCity) || R.CITIES[0];
+
+            for (let t = 3; t <= 8; t++) {
+              const enchs = (t <= 3 || res.id === 'stone') ? [0] : [0, 1, 2, 3, 4];
+              enchs.forEach(e => {
+                if (!matchesFilters('refining', t, e, res.refinedName, res.rawName, cityObj.name, `T${t}.${e}`, 'refining')) return;
+
+                const rawId = R.getItemId(res.rawPrefix, t, e);
+                const prevTierId = t === 2 ? null : (t === 3 ? R.getItemId(res.refinedPrefix, 2, 0) : R.getItemId(res.refinedPrefix, t - 1, e));
+                const outId = R.getItemId(res.refinedPrefix, t, e);
+
+                const rawEntry = getPriceEntry(rawId);
+                const prevEntry = prevTierId ? getPriceEntry(prevTierId) : { price: 0 };
+                const outEntry = getPriceEntry(outId);
+
+                const rrrObj = R.calculateRRR({
+                  cityId: cityObj.id,
+                  resourceId: res.id,
+                  useFocus,
+                  dailyBonusPercent: 0,
+                });
+                const focusPerCraft = R.calculateFocusCost({ tier: t, enchantment: e, specs: rSpecs });
+                const stationFee = R.calculateStationFee({ tier: t, enchantment: e, feePer100Nutrition: 500 });
+
+                let batch = 250;
+                if (useFocus && focusBudget > 0 && focusPerCraft > 0) {
+                  batch = Math.max(1, R.fitBatchToFocus({
+                    focusPool: focusBudget,
+                    focusCostPerCraft: focusPerCraft,
+                    rrr: rrrObj.rate,
+                    compound: true,
+                  }));
+                }
+
+                const sim = R.simulateRefining({
+                  tier: t,
+                  enchantment: e,
+                  batchCrafts: batch,
+                  rawPrice: rawEntry.price,
+                  prevTierPrice: prevEntry.price,
+                  sellPrice: outEntry.price,
+                  rrr: rrrObj.rate,
+                  compound: true,
+                  stationFeePerCraft: stationFee,
+                  useFocus,
+                  focusCostPerCraft: focusPerCraft,
+                  marketFeeRate,
+                  buyFeeRate,
+                  useHeart: false,
+                  heartPrice: 0,
+                });
+
+                const fetchIds = [rawId, outId];
+                if (prevTierId) fetchIds.push(prevTierId);
+
+                opportunities.push({
+                  discipline: 'refining',
+                  labelType: 'Refine',
+                  badgeClass: 'badge-refine',
+                  itemId: outId,
+                  name: res.refinedName,
+                  subText: `Refining · ${cityObj.name} (+${cityObj.bonus}% City)`,
+                  tier: t,
+                  enchant: e,
+                  cityLabel: cityObj.name,
+                  batchLabel: `${sim.totalCrafts.toLocaleString()} crafts · RRR ${rrrObj.percentage.toFixed(1)}%`,
+                  productionCost: sim.totalProductionCost,
+                  unitCraftCost: sim.totalCrafts > 0 ? sim.totalProductionCost / sim.totalCrafts : 0,
+                  sellPrice: outEntry.price,
+                  sellSubLabel: outEntry.age.text,
+                  sellAge: outEntry.age,
+                  roi: sim.profitMargin,
+                  silverPerFocus: sim.silverPerFocus,
+                  profitPerUnit: sim.totalCrafts > 0 ? sim.netProfit / sim.totalCrafts : 0,
+                  netProfit: sim.netProfit,
+                  fetchIds,
+                  openAction: () => {
+                    try {
+                      const prev = JSON.parse(localStorage.getItem('ALBION_REFINING_SESSION_V1') || '{}');
+                      localStorage.setItem('ALBION_REFINING_SESSION_V1', JSON.stringify({
+                        ...prev,
+                        resourceId: res.id,
+                        tier: t,
+                        enchant: e,
+                        cityId: cityObj.id,
+                        hasPremium,
+                        buyOrderType,
+                        orderType,
+                        useFocus,
+                        batchSize: batch,
+                      }));
+                    } catch (err) {}
+                    window.location.href = 'refining.html';
+                  },
+                });
+              });
+            }
+          });
+        }
+
+        // 3. Farming Scanner
+        if ((scanMode === 'all' || scanMode === 'farming') && !stationFilter.startsWith('cat:') && !stationFilter.startsWith('tree:')) {
+          F.ITEMS.forEach(item => {
+            if (!matchesFilters('farming', item.tier, 0, item.name, item.productName, item.seedName, item.category, (item.bonusCities || []).join(' '), `T${item.tier}`, 'farming')) return;
+
+            const bestCityId = (item.bonusCities && item.bonusCities[0]) || 'Caerleon';
+            const cityObj = F.ISLAND_CITIES.find(c => c.id === bestCityId) || F.ISLAND_CITIES[0];
+            const seedEntry = getPriceEntry(item.seedId);
+            const prodEntry = getPriceEntry(item.productId);
+            const mastery = farmingMasteries[item.category] ?? 100;
+            const spec = farmingItemSpecs[item.id] ?? 100;
+            const focusPerTile = F.calculateFarmingFocusCost({ mastery, spec });
+
+            let plots = 5;
+            let extraTiles = 0;
+            if (useFocus && focusBudget > 0 && focusPerTile > 0) {
+              const tilesAffordable = Math.max(1, Math.floor(focusBudget / focusPerTile));
+              plots = Math.floor(tilesAffordable / F.TILES_PER_PLOT);
+              extraTiles = tilesAffordable % F.TILES_PER_PLOT;
+            }
+
+            const sim = F.simulateFarming({
+              itemId: item.id,
+              cityId: cityObj.id,
+              plots,
+              extraTiles,
+              waterMode: useFocus ? 'all' : 'none',
+              hasPremium,
+              mastery,
+              spec,
+              seedPrice: seedEntry.price,
+              productPrice: prodEntry.price,
+              useNpcCap: true,
+              marketFeeRate,
+              buyFeeRate,
+            });
+
+            opportunities.push({
+              discipline: 'farming',
+              labelType: 'Farm',
+              badgeClass: 'badge-farm',
+              itemId: item.productId,
+              name: item.productName,
+              subText: `${item.category === 'crops' ? 'Crop' : 'Herb'} · ${cityObj.name} (+10% Biome)`,
+              tier: item.tier,
+              enchant: 0,
+              cityLabel: cityObj.name,
+              batchLabel: `${sim.totalTiles} tiles (${sim.totalHarvest.toLocaleString()} harvest)`,
+              productionCost: sim.totalExpense,
+              unitCraftCost: sim.totalHarvest > 0 ? sim.totalExpense / sim.totalHarvest : 0,
+              sellPrice: prodEntry.price,
+              sellSubLabel: prodEntry.age.text,
+              sellAge: prodEntry.age,
+              roi: sim.profitMargin,
+              silverPerFocus: sim.silverPerFocus,
+              profitPerUnit: sim.profitPerTile,
+              netProfit: sim.netProfit,
+              fetchIds: [item.seedId, item.productId],
+              openAction: () => {
+                try {
+                  const prev = JSON.parse(localStorage.getItem('ALBION_FARMING_SESSION_V1') || '{}');
+                  localStorage.setItem('ALBION_FARMING_SESSION_V1', JSON.stringify({
+                    ...prev,
+                    category: item.category,
+                    itemId: item.id,
+                    cityId: cityObj.id,
+                    hasPremium,
+                    buyOrderType,
+                    orderType,
+                    useFocus,
+                    waterMode: useFocus ? 'all' : 'none',
+                    plots: Math.max(1, plots),
+                  }));
+                } catch (err) {}
+                window.location.href = 'farming.html';
+              },
+            });
+          });
+        }
+
+        // Sort
+        opportunities.sort((a, b) => {
+          if (sortBy === 'roi') return (b.roi || 0) - (a.roi || 0);
+          if (sortBy === 'silverPerFocus') return (b.silverPerFocus ?? -1e12) - (a.silverPerFocus ?? -1e12);
+          if (sortBy === 'profitPerCraft') return (b.profitPerUnit || 0) - (a.profitPerUnit || 0);
+          if (sortBy === 'cost') return (a.productionCost || 0) - (b.productionCost || 0);
+          return (b.netProfit || 0) - (a.netProfit || 0);
+        });
+
+        return opportunities;
+      }
+
+      let lastFilteredOpps = [];
+
+      function render() {
+        syncTopControls();
+        lastFilteredOpps = computeAllOpportunities();
+
+        // KPI Summary
+        const profitableCount = lastFilteredOpps.filter(o => o.netProfit > 0).length;
+        const liveCount = lastFilteredOpps.filter(o => o.sellAge && o.sellAge.text !== 'Est.' && o.sellAge.text !== 'Manual').length;
+
+        const top = lastFilteredOpps[0];
+        if (top) {
+          document.getElementById('kpiTopName').innerText = `T${top.tier}.${top.enchant} ${top.name}`;
+          document.getElementById('kpiTopSub').innerText = `${top.subText} · ${top.batchLabel}`;
+          const profEl = document.getElementById('kpiBestProfit');
+          profEl.innerText = `${top.netProfit > 0 ? '+' : ''}${Math.round(top.netProfit).toLocaleString()} s`;
+          profEl.className = 'kpi-val ' + (top.netProfit > 0 ? 'text-pos' : 'text-neg');
+          const sfStr = top.silverPerFocus !== null ? `${top.silverPerFocus.toFixed(1)} S/FP` : 'Focus Off';
+          document.getElementById('kpiBestProfitSub').innerText = `${top.roi.toFixed(1)}% ROI · ${sfStr}`;
+        } else {
+          document.getElementById('kpiTopName').innerText = 'No Matches';
+          document.getElementById('kpiTopSub').innerText = 'Adjust filters above';
+          document.getElementById('kpiBestProfit').innerText = '0 s';
+          document.getElementById('kpiBestProfitSub').innerText = '—';
+        }
+
+        document.getElementById('kpiMatchCount').innerText = `${profitableCount} / ${lastFilteredOpps.length}`;
+        document.getElementById('kpiCoverage').innerText = `${liveCount} Live EU`;
+
+        // Table
+        const maxRows = 150;
+        const slice = lastFilteredOpps.slice(0, maxRows);
+        document.getElementById('scannerLimitNote').innerText =
+          lastFilteredOpps.length > maxRows
+            ? `Showing top ${maxRows} of ${lastFilteredOpps.length} matches`
+            : `${lastFilteredOpps.length} matches`;
+
+        scannerTableBody.innerHTML = '';
+        if (slice.length === 0) {
+          scannerTableBody.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 26px; color: var(--text-muted);">No matching opportunities found.</td></tr>`;
+          return;
+        }
+
+        const frag = document.createDocumentFragment();
+        slice.forEach((op, idx) => {
+          const tr = document.createElement('tr');
+          const isPos = op.netProfit > 0;
+          const sfText = op.silverPerFocus !== null ? `${op.silverPerFocus.toFixed(1)}` : '—';
+          const ageCat = op.sellAge ? op.sellAge.category : 'stale';
+
+          tr.innerHTML = `
+            <td class="mono" style="color: var(--text-muted); font-weight: 700;">#${idx + 1}</td>
+            <td><span class="badge-type ${op.badgeClass}">${op.labelType}</span></td>
+            <td>
+              <div class="item-cell">
+                <img class="item-icon" src="${C.getRenderUrl(op.itemId, 1, 48)}" alt="${op.name}" loading="lazy">
+                <div>
+                  <div class="item-title">${op.name}</div>
+                  <div class="item-sub">${op.subText}</div>
+                </div>
+              </div>
+            </td>
+            <td class="mono" style="font-weight: 800; white-space: nowrap;">${formatTierEnchHtml(op.tier, op.enchant)}</td>
+            <td style="font-size: 11px; color: var(--text-muted); white-space: nowrap;">${op.batchLabel}</td>
+            <td class="mono" style="white-space: nowrap;">
+              <div>${Math.round(op.productionCost).toLocaleString()} s</div>
+              <div class="item-sub">${Math.round(op.unitCraftCost).toLocaleString()} / unit</div>
+            </td>
+            <td class="mono" style="white-space: nowrap;">
+              <div style="color: var(--success); font-weight: 700;">${Math.round(op.sellPrice).toLocaleString()} s</div>
+              <span class="price-age age-${ageCat}">${op.sellSubLabel}</span>
+            </td>
+            <td class="mono ${isPos ? 'text-pos' : 'text-neg'}" style="white-space: nowrap;">${op.roi.toFixed(1)}%</td>
+            <td class="mono" style="color: var(--cyan); font-weight: 700; white-space: nowrap;">${sfText}</td>
+            <td class="mono ${isPos ? 'text-pos' : 'text-neg'}" style="font-size: 13px; white-space: nowrap;">
+              ${isPos ? '+' : ''}${Math.round(op.netProfit).toLocaleString()} s
+            </td>
+            <td><button type="button" class="btn-open">Open ➔</button></td>
+          `;
+          tr.querySelector('.btn-open').onclick = op.openAction;
+          frag.appendChild(tr);
+        });
+        scannerTableBody.appendChild(frag);
+      }
+
+      fetchScannerBtn.onclick = async () => {
+        // Collect unique item IDs from the top 60 filtered opportunities (so fetches stay crisp & fast)
+        const idSet = new Set();
+        lastFilteredOpps.slice(0, 60).forEach(op => {
+          op.fetchIds.forEach(id => idSet.add(id));
+        });
+        const allIds = Array.from(idSet);
+        if (allIds.length === 0) return;
+
+        fetchScannerBtn.disabled = true;
+        fetchProgressWrap.style.display = 'block';
+        fetchProgressFill.style.width = '10%';
+        fetchScannerBtn.innerText = `⏳ 0 / ${allIds.length}`;
+
+        try {
+          const chunkSize = 40;
+          const totalChunks = Math.ceil(allIds.length / chunkSize);
+          let updatedCount = 0;
+
+          for (let i = 0; i < totalChunks; i++) {
+            const chunk = allIds.slice(i * chunkSize, (i + 1) * chunkSize);
+            fetchScannerBtn.innerText = `⏳ ${i + 1}/${totalChunks}...`;
+            fetchProgressFill.style.width = `${Math.round(((i + 0.5) / totalChunks) * 100)}%`;
+
+            const res = await API.fetchPrices({
+              server: SERVER,
+              itemIds: chunk,
+              locations: fetchCity,
+              qualities: useQualityPricing ? '1,2,3,4,5' : '1',
+              forceRefresh: true,
+            });
+
+            if (res.data && res.data.length > 0) {
+              const bestByKey = new Map();
+              res.data.forEach(entry => {
+                const p = entry.sell_price_min > 0 ? entry.sell_price_min : entry.buy_price_max;
+                if (p <= 0) return;
+                const q = Number(entry.quality) || 1;
+                const key = q > 1 ? `${entry.item_id}__Q${q}` : entry.item_id;
+                const prev = bestByKey.get(key);
+                if (!prev || p < prev.price) {
+                  bestByKey.set(key, {
+                    price: p,
+                    age: API.formatPriceAge(entry.sell_price_min_date),
+                  });
+                }
+              });
+              const bulk = [];
+              bestByKey.forEach((val, key) => {
+                priceMap.set(key, val);
+                bulk.push({ id: key, price: val.price, age: val.age });
+                updatedCount++;
+              });
+              if (PS && bulk.length > 0) PS.setPricesBulk(bulk);
+            }
+          }
+
+          fetchProgressFill.style.width = '100%';
+          render();
+          fetchScannerBtn.innerText = `✓ ${updatedCount} Updated`;
+          setTimeout(() => {
+            fetchScannerBtn.innerText = 'Fetch Prices (EU)';
+            fetchScannerBtn.disabled = false;
+            fetchProgressWrap.style.display = 'none';
+          }, 2500);
+        } catch (err) {
+          console.warn('Scanner fetch error:', err);
+          fetchScannerBtn.innerText = '⚠ Fetch Error';
+          setTimeout(() => {
+            fetchScannerBtn.innerText = 'Fetch Prices (EU)';
+            fetchScannerBtn.disabled = false;
+            fetchProgressWrap.style.display = 'none';
+          }, 2500);
+        }
+      };
+
+      if (PS) {
+        PS.onExternalChange(() => {
+          reloadPriceMap();
+          render();
+        });
+      }
+
+      render();
+    })();
+  </script>
+</body>
+</html>

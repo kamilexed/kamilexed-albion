@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Albion Online — Crafting Calculator</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
-  <script src="albion_crafting_rules.js?v=20261123-2"></script>
+  <script src="albion_crafting_rules.js?v=20261123-3"></script>
   <script src="albion_api.js?v=20261119-2"></script>
   <script src="albion_price_store.js?v=20261120-3"></script>
   <style>
@@ -862,6 +862,32 @@
       accent-color: var(--accent);
       cursor: pointer;
     }
+
+    .quality-sell-panel {
+      background: var(--surface-well);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .quality-sell-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .quality-sell-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(122px, 1fr));
+      gap: 8px;
+    }
   </style>
 </head>
 <body>
@@ -890,6 +916,10 @@
       <a href="prices.html" class="sidebar-link" title="Global Item Prices">
         <span class="sidebar-link-icon">💰</span>
         <span class="sidebar-link-label">Prices</span>
+      </a>
+      <a href="scanner.html" class="sidebar-link" title="Profit Scanner">
+        <span class="sidebar-link-icon">📊</span>
+        <span class="sidebar-link-label">Scanner</span>
       </a>
     </nav>
   </aside>
@@ -945,6 +975,10 @@
             </button>
 
             <select id="foodTopSelect" class="pill-select" style="color: var(--success);" title="Select food eaten before crafting (boosts Crafting Quality &amp; Speed)"></select>
+
+            <button id="qualityPricingToggle" class="btn-toggle" type="button" title="ON: Weight Q1-Q5 market prices by Quality Roll probability (EV) · OFF: Use a single sell price">
+              Quality Pricing: <span style="color: var(--text-muted);">OFF (Single)</span>
+            </button>
           </div>
         </div>
       </header>
@@ -1175,12 +1209,64 @@
               <input type="number" id="fullJournalPriceInput" min="0" class="field-input" value="11500" style="color: var(--gold);">
             </div>
 
-            <div class="field-box">
+            <div class="field-box" id="saladPriceBox" style="display: none;">
+              <div class="field-label">
+                <span id="saladPriceLabel" style="color: var(--success);">Crafting Food Cost</span>
+                <button type="button" id="saladAgeBadge" class="price-age age-stale" title="Click to refresh price from Europe AODP">Manual</button>
+              </div>
+              <input type="number" id="saladPriceInput" min="0" class="field-input" value="2800" style="color: var(--success);">
+            </div>
+
+            <div class="field-box" id="singleSellBox">
               <div class="field-label">
                 <span id="outputPriceLabel">Crafted Item Sell</span>
                 <button type="button" id="outputAgeBadge" class="price-age age-stale" title="Click to refresh price from Europe AODP">Manual</button>
               </div>
               <input type="number" id="outputPriceInput" min="0" class="field-input" value="8500" style="color: var(--success);">
+            </div>
+          </div>
+
+          <div id="qualitySellPanel" class="quality-sell-panel" style="display: none;">
+            <div class="quality-sell-header">
+              <span>Quality-Weighted Expected Sell Prices (Q1–Q5)</span>
+              <span id="weightedAvgSellBadge" style="color: var(--success); font-family: monospace; font-size: 12px;">Expected Avg Sell: 0 s/item</span>
+            </div>
+            <div class="quality-sell-grid">
+              <div class="field-box" style="border-top: 2px solid #9ca3af;">
+                <div class="field-label">
+                  <span id="qWeightLabel1" style="color: #9ca3af;">Q1 Normal (0%)</span>
+                  <button type="button" id="qAgeBadge1" class="price-age age-stale" title="Refresh Q1 price from Europe AODP">Manual</button>
+                </div>
+                <input type="number" id="qPriceInput1" min="0" class="field-input" value="0" style="color: #e5e7eb;">
+              </div>
+              <div class="field-box" style="border-top: 2px solid #60a5fa;">
+                <div class="field-label">
+                  <span id="qWeightLabel2" style="color: #60a5fa;">Q2 Good (0%)</span>
+                  <button type="button" id="qAgeBadge2" class="price-age age-stale" title="Refresh Q2 price from Europe AODP">Manual</button>
+                </div>
+                <input type="number" id="qPriceInput2" min="0" class="field-input" value="0" style="color: #60a5fa;">
+              </div>
+              <div class="field-box" style="border-top: 2px solid #94a3b8;">
+                <div class="field-label">
+                  <span id="qWeightLabel3" style="color: #94a3b8;">Q3 Outst. (0%)</span>
+                  <button type="button" id="qAgeBadge3" class="price-age age-stale" title="Refresh Q3 price from Europe AODP">Manual</button>
+                </div>
+                <input type="number" id="qPriceInput3" min="0" class="field-input" value="0" style="color: #cbd5e1;">
+              </div>
+              <div class="field-box" style="border-top: 2px solid #c084fc;">
+                <div class="field-label">
+                  <span id="qWeightLabel4" style="color: #c084fc;">Q4 Excel. (0%)</span>
+                  <button type="button" id="qAgeBadge4" class="price-age age-stale" title="Refresh Q4 price from Europe AODP">Manual</button>
+                </div>
+                <input type="number" id="qPriceInput4" min="0" class="field-input" value="0" style="color: #c084fc;">
+              </div>
+              <div class="field-box" style="border-top: 2px solid #fbbf24;">
+                <div class="field-label">
+                  <span id="qWeightLabel5" style="color: #fbbf24;">Q5 Mast. (0%)</span>
+                  <button type="button" id="qAgeBadge5" class="price-age age-stale" title="Refresh Q5 price from Europe AODP">Manual</button>
+                </div>
+                <input type="number" id="qPriceInput5" min="0" class="field-input" value="0" style="color: #fbbf24;">
+              </div>
             </div>
           </div>
 
@@ -1230,6 +1316,14 @@
               0 Silver
             </div>
             <div id="unitCraftCostSub" class="kpi-sub">vs 0 Market</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Fame Gained / Craft</div>
+            <div id="famePerCraftVal" class="kpi-val" style="color: #93c5fd;" data-tooltip="Destiny Board Crafting Fame gained per item (Base Fame × 1.5 when Premium is ON; Journals always fill from Base Fame)">
+              0 Fame
+            </div>
+            <div id="fameTotalSub" class="kpi-sub">Total: 0 Fame</div>
           </div>
         </div>
 
@@ -1283,6 +1377,10 @@
               <tr id="rowBuyFeeWrapper" style="display: none;">
                 <td>Buy Order Setup Fee (+2.5%)</td>
                 <td id="rowBuyFee" class="text-neg">-0</td>
+              </tr>
+              <tr id="rowFoodCostWrapper" style="display: none;">
+                <td id="rowFoodCostLabel">Crafting Food Consumed</td>
+                <td id="rowFoodCost" class="text-neg">-0</td>
               </tr>
               <tr>
                 <td>Station Nutrition Usage Fee</td>
@@ -1407,6 +1505,7 @@
       let useJournals = true;
       let dailyBonus = 0;
       let selectedSaladId = 'none';
+      let useQualityPricing = false;
       let stationTax = 400;
       let quantity = 10;
       let customRRR = 24.8;
@@ -1500,8 +1599,36 @@
             }
           }
         });
+
+        C.SALADS.forEach(sl => {
+          if (sl.itemId && !priceStore.has(sl.itemId)) {
+            priceStore.set(sl.itemId, {
+              price: sl.defaultPrice || 2000,
+              age: { text: 'Est.', category: 'moderate' },
+            });
+          }
+        });
       }
       seedDefaultPrices();
+
+      const QUALITY_MULT = { 1: 1.0, 2: 1.04, 3: 1.12, 4: 1.30, 5: 2.0 };
+      function getQualityPriceKey(itemId, q) {
+        return `${itemId}__Q${q}`;
+      }
+      function ensureQualityPricesSeeded(craftedId) {
+        if (!craftedId) return;
+        const baseEntry = priceStore.get(craftedId);
+        const basePrice = baseEntry ? baseEntry.price : 0;
+        for (let q = 1; q <= 5; q++) {
+          const qKey = getQualityPriceKey(craftedId, q);
+          if (!priceStore.has(qKey)) {
+            priceStore.set(qKey, {
+              price: Math.round(basePrice * QUALITY_MULT[q]),
+              age: q === 1 && baseEntry ? baseEntry.age : { text: 'Est.', category: 'moderate' },
+            });
+          }
+        }
+      }
 
       // DOM Elements
       const leftSidebar = document.getElementById('leftSidebar');
@@ -1527,6 +1654,7 @@
       const dailyBonusSelect = document.getElementById('dailyBonusSelect');
       const saladSelect = document.getElementById('saladSelect');
       const foodTopSelect = document.getElementById('foodTopSelect');
+      const qualityPricingToggle = document.getElementById('qualityPricingToggle');
       const stationTaxInput = document.getElementById('stationTaxInput');
 
       C.SALADS.forEach(s => {
@@ -1547,7 +1675,31 @@
       const artifactPriceInput = document.getElementById('artifactPriceInput');
       const emptyJournalPriceInput = document.getElementById('emptyJournalPriceInput');
       const fullJournalPriceInput = document.getElementById('fullJournalPriceInput');
+      const saladPriceInput = document.getElementById('saladPriceInput');
       const outputPriceInput = document.getElementById('outputPriceInput');
+      const singleSellBox = document.getElementById('singleSellBox');
+      const qualitySellPanel = document.getElementById('qualitySellPanel');
+      const qPriceInputs = {
+        1: document.getElementById('qPriceInput1'),
+        2: document.getElementById('qPriceInput2'),
+        3: document.getElementById('qPriceInput3'),
+        4: document.getElementById('qPriceInput4'),
+        5: document.getElementById('qPriceInput5'),
+      };
+      const qAgeBadges = {
+        1: document.getElementById('qAgeBadge1'),
+        2: document.getElementById('qAgeBadge2'),
+        3: document.getElementById('qAgeBadge3'),
+        4: document.getElementById('qAgeBadge4'),
+        5: document.getElementById('qAgeBadge5'),
+      };
+      const qWeightLabels = {
+        1: document.getElementById('qWeightLabel1'),
+        2: document.getElementById('qWeightLabel2'),
+        3: document.getElementById('qWeightLabel3'),
+        4: document.getElementById('qWeightLabel4'),
+        5: document.getElementById('qWeightLabel5'),
+      };
       const appliedFeeText = document.getElementById('appliedFeeText');
       const priceMatrixBody = document.getElementById('priceMatrixBody');
       const priceMatrixSidebar = document.getElementById('priceMatrixSidebar');
@@ -1585,7 +1737,9 @@
       bindNonNegativeInput(artifactPriceInput, 0);
       bindNonNegativeInput(emptyJournalPriceInput, 0);
       bindNonNegativeInput(fullJournalPriceInput, 0);
+      bindNonNegativeInput(saladPriceInput, 0);
       bindNonNegativeInput(outputPriceInput, 0);
+      [1, 2, 3, 4, 5].forEach(q => bindNonNegativeInput(qPriceInputs[q], 0));
 
       sidebarToggleBtn.onclick = () => {
         const expanded = leftSidebar.classList.toggle('expanded');
@@ -1599,6 +1753,17 @@
         const cleanPrice = Math.max(0, parseInt(price) || 0);
         priceStore.set(id, { price: cleanPrice, age });
         if (window.AlbionPriceStore) window.AlbionPriceStore.setPrice(id, cleanPrice, age);
+        if (id.endsWith('__Q1')) {
+          const baseId = id.slice(0, -4);
+          priceStore.set(baseId, { price: cleanPrice, age });
+          if (window.AlbionPriceStore) window.AlbionPriceStore.setPrice(baseId, cleanPrice, age);
+        } else if (!id.includes('__Q')) {
+          const q1Key = getQualityPriceKey(id, 1);
+          if (priceStore.has(q1Key)) {
+            priceStore.set(q1Key, { price: cleanPrice, age });
+            if (window.AlbionPriceStore) window.AlbionPriceStore.setPrice(q1Key, cleanPrice, age);
+          }
+        }
       }
 
       function syncControlsUI() {
@@ -1628,6 +1793,11 @@
 
         journalToggle.className = 'btn-toggle' + (useJournals ? ' active' : '');
         journalToggle.innerHTML = `Journals: <span style="color: ${useJournals ? 'var(--gold)' : 'var(--text-muted)'};">${useJournals ? 'ON' : 'OFF'}</span>`;
+
+        qualityPricingToggle.className = 'btn-toggle' + (useQualityPricing ? ' active' : '');
+        qualityPricingToggle.innerHTML = `Quality Pricing: <span style="color: ${useQualityPricing ? 'var(--success)' : 'var(--text-muted)'};">${useQualityPricing ? 'ON (EV)' : 'OFF (Single)'}</span>`;
+        singleSellBox.style.display = useQualityPricing ? 'none' : 'block';
+        qualitySellPanel.style.display = useQualityPricing ? 'block' : 'none';
 
         hideoutConfigContainer.style.display = selectedCity.id === 'Hideout' ? 'block' : 'none';
         customRRRContainer.style.display = selectedCity.id === 'Custom' ? 'block' : 'none';
@@ -1688,6 +1858,7 @@
             useJournals,
             dailyBonus,
             saladId: selectedSaladId,
+            useQualityPricing,
             stationTax,
             quantity,
             customRRR,
@@ -1743,6 +1914,7 @@
           if (typeof s.useJournals === 'boolean') useJournals = s.useJournals;
           if ([0, 10, 20].includes(Number(s.dailyBonus))) dailyBonus = Number(s.dailyBonus);
           if (s.saladId && C.SALADS.some(sl => sl.id === s.saladId)) selectedSaladId = s.saladId;
+          if (typeof s.useQualityPricing === 'boolean') useQualityPricing = s.useQualityPricing;
           if (typeof s.stationTax === 'number' && !Number.isNaN(s.stationTax)) stationTax = Math.max(0, s.stationTax);
           if (typeof s.quantity === 'number' && !Number.isNaN(s.quantity)) quantity = Math.max(1, Math.round(s.quantity));
           if (typeof s.customRRR === 'number' && !Number.isNaN(s.customRRR)) customRRR = Math.min(Math.max(0, s.customRRR), 95);
@@ -1777,7 +1949,7 @@
         } catch (e) {}
       }
 
-      async function refreshSingleItemPrice(itemId, badgeEl) {
+      async function refreshSingleItemPrice(itemId, badgeEl, quality = 1) {
         if (!itemId) return;
         const originalText = badgeEl.innerText;
         badgeEl.innerText = '⏳...';
@@ -1789,6 +1961,7 @@
             server: SERVER,
             itemIds: [itemId],
             locations: loc,
+            qualities: String(quality || 1),
             forceRefresh: true,
           });
 
@@ -1803,7 +1976,8 @@
             if (bestEntry) {
               const p = bestEntry.sell_price_min > 0 ? bestEntry.sell_price_min : bestEntry.buy_price_max;
               const age = API.formatPriceAge(bestEntry.sell_price_min_date);
-              setItemPrice(itemId, p, age);
+              const targetKey = quality > 1 ? getQualityPriceKey(itemId, quality) : itemId;
+              setItemPrice(targetKey, p, age);
             } else {
               badgeEl.innerText = 'No data';
               setTimeout(() => renderPriceMatrix(), 1200);
@@ -2059,6 +2233,29 @@
           b.className = 'price-age age-' + e.age.category;
           b.onclick = () => refreshSingleItemPrice(ids.craftedId, b);
         }
+
+        ensureQualityPricesSeeded(ids.craftedId);
+        [1, 2, 3, 4, 5].forEach(q => {
+          const qKey = getQualityPriceKey(ids.craftedId, q);
+          const qe = priceStore.get(qKey);
+          if (qe && qPriceInputs[q]) {
+            qPriceInputs[q].value = qe.price;
+            const qb = qAgeBadges[q];
+            qb.innerText = qe.age.text;
+            qb.className = 'price-age age-' + qe.age.category;
+            qb.onclick = () => refreshSingleItemPrice(ids.craftedId, qb, q);
+          }
+        });
+
+        const activeSaladObj = C.SALADS.find(sl => sl.id === selectedSaladId);
+        if (activeSaladObj && activeSaladObj.itemId && priceStore.has(activeSaladObj.itemId)) {
+          const se = priceStore.get(activeSaladObj.itemId);
+          saladPriceInput.value = se.price;
+          const sb = document.getElementById('saladAgeBadge');
+          sb.innerText = se.age.text;
+          sb.className = 'price-age age-' + se.age.category;
+          sb.onclick = () => refreshSingleItemPrice(activeSaladObj.itemId, sb);
+        }
       }
 
       // Top Island & Options Event Handlers
@@ -2069,6 +2266,7 @@
       focusToggle.onclick = () => { useFocus = !useFocus; syncControlsUI(); render(); };
       compoundToggle.onclick = () => { compound = !compound; syncControlsUI(); render(); };
       journalToggle.onclick = () => { useJournals = !useJournals; syncControlsUI(); render(); };
+      qualityPricingToggle.onclick = () => { useQualityPricing = !useQualityPricing; syncControlsUI(); render(); };
 
       hideoutZoneQualitySelect.onchange = (e) => {
         hideoutZoneQuality = Math.min(Math.max(parseInt(e.target.value) || 6, 1), 6);
@@ -2087,8 +2285,8 @@
       };
 
       dailyBonusSelect.onchange = (e) => { dailyBonus = parseInt(e.target.value) || 0; render(); };
-      saladSelect.onchange = (e) => { selectedSaladId = e.target.value || 'none'; render(); };
-      foodTopSelect.onchange = (e) => { selectedSaladId = e.target.value || 'none'; render(); };
+      saladSelect.onchange = (e) => { selectedSaladId = e.target.value || 'none'; syncCurrentItemPrices(); render(); };
+      foodTopSelect.onchange = (e) => { selectedSaladId = e.target.value || 'none'; syncCurrentItemPrices(); render(); };
       stationTaxInput.oninput = (e) => {
         if (parseFloat(e.target.value) < 0) e.target.value = 0;
         stationTax = Math.max(0, parseFloat(e.target.value) || 0);
@@ -2135,12 +2333,30 @@
         setItemPrice(getActiveIds().fullJournalId, e.target.value);
         render();
       };
+      saladPriceInput.oninput = (e) => {
+        if (parseFloat(e.target.value) < 0) e.target.value = 0;
+        const sl = C.SALADS.find(s => s.id === selectedSaladId);
+        if (sl && sl.itemId) setItemPrice(sl.itemId, e.target.value);
+        render();
+      };
       outputPriceInput.oninput = (e) => {
         if (parseFloat(e.target.value) < 0) e.target.value = 0;
         setItemPrice(getActiveIds().craftedId, e.target.value);
+        syncCurrentItemPrices();
         render();
         renderPriceMatrix();
       };
+      [1, 2, 3, 4, 5].forEach(q => {
+        qPriceInputs[q].oninput = (e) => {
+          if (parseFloat(e.target.value) < 0) e.target.value = 0;
+          setItemPrice(getQualityPriceKey(getActiveIds().craftedId, q), e.target.value);
+          if (q === 1) {
+            outputPriceInput.value = e.target.value;
+            renderPriceMatrix();
+          }
+          render();
+        };
+      });
 
       window.setBatch = (val) => {
         quantity = Math.max(1, val);
@@ -2344,23 +2560,36 @@
         }
 
         try {
+          const activeSaladFetch = C.SALADS.find(sl => sl.id === selectedSaladId);
+          if (activeSaladFetch && activeSaladFetch.itemId) idSet.add(activeSaladFetch.itemId);
           const loc = !['Hideout', 'Island', 'Custom'].includes(selectedCity.id) ? selectedCity.name : '';
           const res = await API.fetchPrices({
             server: SERVER,
             itemIds: Array.from(idSet),
             locations: loc,
+            qualities: useQualityPricing ? '1,2,3,4,5' : '1',
             forceRefresh: true,
           });
 
           let updated = 0;
           if (res.data && res.data.length > 0) {
+            const bestByKey = new Map();
             res.data.forEach(entry => {
-              const age = API.formatPriceAge(entry.sell_price_min_date);
               const p = entry.sell_price_min > 0 ? entry.sell_price_min : entry.buy_price_max;
-              if (p > 0) {
-                setItemPrice(entry.item_id, p, age);
-                updated++;
+              if (p <= 0) return;
+              const q = Number(entry.quality) || 1;
+              const storeKey = q > 1 ? getQualityPriceKey(entry.item_id, q) : entry.item_id;
+              const prev = bestByKey.get(storeKey);
+              if (!prev || p < prev.price) {
+                bestByKey.set(storeKey, {
+                  price: p,
+                  age: API.formatPriceAge(entry.sell_price_min_date),
+                });
               }
+            });
+            bestByKey.forEach((val, storeKey) => {
+              setItemPrice(storeKey, val.price, val.age);
+              updated++;
             });
           }
           syncCurrentItemPrices();
@@ -2557,7 +2786,16 @@
         const curArtifactPrice = hasArt ? (Number(artifactPriceInput.value) || 0) : 0;
         const curEmptyJournalPrice = Number(emptyJournalPriceInput.value) || 0;
         const curFullJournalPrice = Number(fullJournalPriceInput.value) || 0;
+        const hasFood = Boolean(activeSalad && activeSalad.itemId);
+        const curSaladPrice = hasFood ? (Number(saladPriceInput.value) || 0) : 0;
         const curOutputPrice = Number(outputPriceInput.value) || 0;
+        const curQualityPrices = {
+          1: Number(qPriceInputs[1].value) || 0,
+          2: Number(qPriceInputs[2].value) || 0,
+          3: Number(qPriceInputs[3].value) || 0,
+          4: Number(qPriceInputs[4].value) || 0,
+          5: Number(qPriceInputs[5].value) || 0,
+        };
 
         const sim = C.simulateCrafting({
           itemId: selectedItem.id,
@@ -2578,7 +2816,10 @@
           crossSpec: cs,
           crossSpecFce,
           crossSpecQualityBonus,
+          saladId: selectedSaladId,
           saladBonus: activeSalad ? activeSalad.bonus : 0,
+          saladSpeedPct: activeSalad ? activeSalad.speedPct : 0,
+          saladPrice: curSaladPrice,
           feePer100Nutrition: stationTax,
           primaryMatPrice: curPrimaryPrice,
           secondaryMatPrice: curSecondaryPrice,
@@ -2586,6 +2827,8 @@
           emptyJournalPrice: curEmptyJournalPrice,
           fullJournalPrice: curFullJournalPrice,
           outputPrice: curOutputPrice,
+          useQualityPricing,
+          qualityPrices: curQualityPrices,
           marketFeeRate,
           buyFeeRate,
         });
@@ -2683,12 +2926,26 @@
           fullJBox.style.display = 'none';
         }
 
+        const saladBox = document.getElementById('saladPriceBox');
+        if (hasFood) {
+          saladBox.style.display = 'block';
+          document.getElementById('saladPriceLabel').innerText = `${activeSalad.name.split(' (')[0]} Cost`;
+        } else {
+          saladBox.style.display = 'none';
+        }
+
         document.getElementById('outputPriceLabel').innerHTML = `${teHtml} ${selectedItem.name} Sell`;
+
+        if (useQualityPricing) {
+          document.getElementById('weightedAvgSellBadge').innerText =
+            `Expected Avg Sell: ${Math.round(sim.expectedUnitSellPrice).toLocaleString()} s/item`;
+        }
 
         const artSummary = hasArt ? ` · ${sim.artifactsBought} Artifacts` : '';
         const jSummary = useJournals ? ` · ${sim.journalsFilled.toFixed(2)} Journals` : '';
+        const foodSummary = sim.saladsConsumed > 0 ? ` · ${sim.saladsConsumed}x Food (${Math.round(sim.totalCraftSeconds)}s)` : '';
         document.getElementById('totalActionsPreview').innerText =
-          `${sim.totalCrafts.toLocaleString()} items (${sim.totalFocusCost.toLocaleString()} FP${artSummary}${jSummary})`;
+          `${sim.totalCrafts.toLocaleString()} items (${sim.totalFocusCost.toLocaleString()} FP${artSummary}${jSummary}${foodSummary})`;
 
         // KPIs
         const isProf = sim.netProfit > 0;
@@ -2719,18 +2976,27 @@
 
         document.getElementById('breakEvenVal').innerText = `${Math.ceil(sim.breakEvenPrice).toLocaleString()} Silver`;
 
+        const effectiveUnitSell = useQualityPricing ? sim.expectedUnitSellPrice : curOutputPrice;
         const unitCostVal = document.getElementById('unitCraftCostVal');
         const unitCostSub = document.getElementById('unitCraftCostSub');
         unitCostVal.innerText = `${Math.round(sim.unitCraftCost).toLocaleString()} Silver`;
-        if (curOutputPrice > 0) {
-          const diffPct = ((sim.unitCraftCost - curOutputPrice) / curOutputPrice) * 100;
-          const isCheaper = sim.unitCraftCost <= curOutputPrice;
-          unitCostSub.innerText = `vs ${curOutputPrice.toLocaleString()} Market (${diffPct > 0 ? '+' : ''}${diffPct.toFixed(1)}%)`;
+        if (effectiveUnitSell > 0) {
+          const diffPct = ((sim.unitCraftCost - effectiveUnitSell) / effectiveUnitSell) * 100;
+          const isCheaper = sim.unitCraftCost <= effectiveUnitSell;
+          unitCostSub.innerText = `vs ${Math.round(effectiveUnitSell).toLocaleString()} ${useQualityPricing ? 'EV ' : ''}Market (${diffPct > 0 ? '+' : ''}${diffPct.toFixed(1)}%)`;
           unitCostSub.style.color = isCheaper ? 'var(--success)' : 'var(--danger)';
         } else {
           unitCostSub.innerText = 'Net cost per item crafted';
           unitCostSub.style.color = 'var(--text-muted)';
         }
+
+        const baseFamePerCraft = jMetrics.famePerCraft;
+        const gainedFamePerCraft = Math.round(baseFamePerCraft * (hasPremium ? 1.5 : 1));
+        const totalGainedFame = Math.round(gainedFamePerCraft * sim.totalCrafts);
+        document.getElementById('famePerCraftVal').innerText = `${gainedFamePerCraft.toLocaleString()} Fame`;
+        document.getElementById('fameTotalSub').innerText = hasPremium
+          ? `Total: ${totalGainedFame.toLocaleString()} (${Math.round(baseFamePerCraft).toLocaleString()} base · +50% Prem)`
+          : `Total: ${totalGainedFame.toLocaleString()} (Base fame)`;
 
         // Quality Roll Chances Card
         const qc = sim.qualityChances;
@@ -2743,11 +3009,15 @@
 
         const qGrid = document.getElementById('qualityChancesGrid');
         qGrid.innerHTML = '';
+        const qShortNames = { 1: 'Q1 Norm', 2: 'Q2 Good', 3: 'Q3 Outst', 4: 'Q4 Excel', 5: 'Q5 Mast' };
         qc.tiers.forEach(qt => {
           const expectedCount = sim.totalCrafts * qt.probability;
           const pctStr = qt.percentage >= 10
             ? qt.percentage.toFixed(1)
             : qt.percentage.toFixed(2);
+          if (qWeightLabels[qt.level]) {
+            qWeightLabels[qt.level].innerText = `${qShortNames[qt.level]} (${pctStr}%)`;
+          }
           const expStr = expectedCount >= 10
             ? `~${Math.round(expectedCount).toLocaleString()} items`
             : `~${expectedCount.toFixed(1)} items`;
@@ -2819,10 +3089,20 @@
           document.getElementById('rowBuyFeeWrapper').style.display = 'none';
         }
 
+        if (sim.foodPurchaseCost > 0) {
+          document.getElementById('rowFoodCostWrapper').style.display = 'table-row';
+          document.getElementById('rowFoodCostLabel').innerText =
+            `${activeSalad.name.split(' (')[0]} (${sim.saladsConsumed}× × ${curSaladPrice.toLocaleString()} s · ~${Math.round(sim.totalCraftSeconds)}s craft time)`;
+          document.getElementById('rowFoodCost').innerText = `-${Math.round(sim.foodPurchaseCost).toLocaleString()}`;
+        } else {
+          document.getElementById('rowFoodCostWrapper').style.display = 'none';
+        }
+
         document.getElementById('rowStationFee').innerText = `-${Math.round(sim.totalStationFee).toLocaleString()}`;
         document.getElementById('rowTotalCost').innerText = `-${Math.round(sim.totalProductionCost).toLocaleString()}`;
-        document.getElementById('rowItemRevenueLabel').innerText =
-          `Gross Crafted ${selectedItem.name} Sales (${sim.totalCrafts.toLocaleString()} × ${curOutputPrice.toLocaleString()} s)`;
+        document.getElementById('rowItemRevenueLabel').innerText = useQualityPricing
+          ? `Gross Crafted ${selectedItem.name} Sales (${sim.totalCrafts.toLocaleString()} × ~${Math.round(sim.expectedUnitSellPrice).toLocaleString()} EV s)`
+          : `Gross Crafted ${selectedItem.name} Sales (${sim.totalCrafts.toLocaleString()} × ${curOutputPrice.toLocaleString()} s)`;
         document.getElementById('rowItemRevenue').innerText = `+${Math.round(sim.itemGrossRevenue).toLocaleString()}`;
         document.getElementById('rowMarketTax').innerText = `-${Math.round(sim.totalMarketTax).toLocaleString()}`;
 

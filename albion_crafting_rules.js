@@ -51,31 +51,31 @@
      * Exact Crafting Salad quality & craft-speed bonuses verified from spells.json + items.json.
      */
     const SALADS = [
-      { id: 'none', name: 'None (+0 Quality)', itemId: null, bonus: 0, speedPct: 0 },
-      { id: 'bean_0', name: 'T2.0 Bean Salad (+33 Quality)', itemId: 'T2_MEAL_SALAD', bonus: 33, speedPct: 16 },
-      { id: 'bean_1', name: 'T2.1 Bean Salad (+49.5 Quality)', itemId: 'T2_MEAL_SALAD@1', bonus: 49.5, speedPct: 24 },
-      { id: 'bean_2', name: 'T2.2 Bean Salad (+66 Quality)', itemId: 'T2_MEAL_SALAD@2', bonus: 66, speedPct: 32 },
-      { id: 'bean_3', name: 'T2.3 Bean Salad (+82.5 Quality)', itemId: 'T2_MEAL_SALAD@3', bonus: 82.5, speedPct: 40 },
-      { id: 'squid_0', name: 'T2.0 Shallowshore Squid Salad (+49.5)', itemId: 'T2_MEAL_SALAD_FISH', bonus: 49.5, speedPct: 24.8 },
-      { id: 'squid_1', name: 'T2.1 Shallowshore Squid Salad (+74.25)', itemId: 'T2_MEAL_SALAD_FISH@1', bonus: 74.25, speedPct: 37.1 },
-      { id: 'squid_2', name: 'T2.2 Shallowshore Squid Salad (+99)', itemId: 'T2_MEAL_SALAD_FISH@2', bonus: 99, speedPct: 49.5 },
-      { id: 'squid_3', name: 'T2.3 Shallowshore Squid Salad (+123.75)', itemId: 'T2_MEAL_SALAD_FISH@3', bonus: 123.75, speedPct: 61.9 },
-      { id: 'turnip_0', name: 'T4.0 Turnip Salad (+66 Quality)', itemId: 'T4_MEAL_SALAD', bonus: 66, speedPct: 32 },
-      { id: 'turnip_1', name: 'T4.1 Turnip Salad (+82.5 Quality)', itemId: 'T4_MEAL_SALAD@1', bonus: 82.5, speedPct: 40 },
-      { id: 'turnip_2', name: 'T4.2 Turnip Salad (+99 Quality)', itemId: 'T4_MEAL_SALAD@2', bonus: 99, speedPct: 48 },
-      { id: 'turnip_3', name: 'T4.3 Turnip Salad (+115.5 Quality)', itemId: 'T4_MEAL_SALAD@3', bonus: 115.5, speedPct: 56 },
-      { id: 'octopus_0', name: 'T4.0 Midwater Octopus Salad (+99)', itemId: 'T4_MEAL_SALAD_FISH', bonus: 99, speedPct: 49.5 },
-      { id: 'octopus_1', name: 'T4.1 Midwater Octopus Salad (+123.75)', itemId: 'T4_MEAL_SALAD_FISH@1', bonus: 123.75, speedPct: 61.9 },
-      { id: 'octopus_2', name: 'T4.2 Midwater Octopus Salad (+148.5)', itemId: 'T4_MEAL_SALAD_FISH@2', bonus: 148.5, speedPct: 74.3 },
-      { id: 'octopus_3', name: 'T4.3 Midwater Octopus Salad (+173.25)', itemId: 'T4_MEAL_SALAD_FISH@3', bonus: 173.25, speedPct: 86.6 },
-      { id: 'potato_0', name: 'T6.0 Potato Salad (+99 Quality)', itemId: 'T6_MEAL_SALAD', bonus: 99, speedPct: 48 },
-      { id: 'potato_1', name: 'T6.1 Potato Salad (+115.5 Quality)', itemId: 'T6_MEAL_SALAD@1', bonus: 115.5, speedPct: 56 },
-      { id: 'potato_2', name: 'T6.2 Potato Salad (+132 Quality)', itemId: 'T6_MEAL_SALAD@2', bonus: 132, speedPct: 64 },
-      { id: 'potato_3', name: 'T6.3 Potato Salad (+148.5 Quality)', itemId: 'T6_MEAL_SALAD@3', bonus: 148.5, speedPct: 72 },
-      { id: 'kraken_0', name: 'T6.0 Deepwater Kraken Salad (+148.5)', itemId: 'T6_MEAL_SALAD_FISH', bonus: 148.5, speedPct: 74.3 },
-      { id: 'kraken_1', name: 'T6.1 Deepwater Kraken Salad (+173.25)', itemId: 'T6_MEAL_SALAD_FISH@1', bonus: 173.25, speedPct: 86.6 },
-      { id: 'kraken_2', name: 'T6.2 Deepwater Kraken Salad (+198)', itemId: 'T6_MEAL_SALAD_FISH@2', bonus: 198, speedPct: 99 },
-      { id: 'kraken_3', name: 'T6.3 Deepwater Kraken Salad (+222.75)', itemId: 'T6_MEAL_SALAD_FISH@3', bonus: 222.75, speedPct: 111.4 },
+      { id: 'none', name: 'None (+0 Quality)', itemId: null, bonus: 0, speedPct: 0, defaultPrice: 0 },
+      { id: 'bean_0', name: 'T2.0 Bean Salad (+33 Quality)', itemId: 'T2_MEAL_SALAD', bonus: 33, speedPct: 16, defaultPrice: 900 },
+      { id: 'bean_1', name: 'T2.1 Bean Salad (+49.5 Quality)', itemId: 'T2_MEAL_SALAD@1', bonus: 49.5, speedPct: 24, defaultPrice: 2500 },
+      { id: 'bean_2', name: 'T2.2 Bean Salad (+66 Quality)', itemId: 'T2_MEAL_SALAD@2', bonus: 66, speedPct: 32, defaultPrice: 6500 },
+      { id: 'bean_3', name: 'T2.3 Bean Salad (+82.5 Quality)', itemId: 'T2_MEAL_SALAD@3', bonus: 82.5, speedPct: 40, defaultPrice: 18000 },
+      { id: 'squid_0', name: 'T2.0 Shallowshore Squid Salad (+49.5)', itemId: 'T2_MEAL_SALAD_FISH', bonus: 49.5, speedPct: 24.8, defaultPrice: 12000 },
+      { id: 'squid_1', name: 'T2.1 Shallowshore Squid Salad (+74.25)', itemId: 'T2_MEAL_SALAD_FISH@1', bonus: 74.25, speedPct: 37.1, defaultPrice: 28000 },
+      { id: 'squid_2', name: 'T2.2 Shallowshore Squid Salad (+99)', itemId: 'T2_MEAL_SALAD_FISH@2', bonus: 99, speedPct: 49.5, defaultPrice: 65000 },
+      { id: 'squid_3', name: 'T2.3 Shallowshore Squid Salad (+123.75)', itemId: 'T2_MEAL_SALAD_FISH@3', bonus: 123.75, speedPct: 61.9, defaultPrice: 145000 },
+      { id: 'turnip_0', name: 'T4.0 Turnip Salad (+66 Quality)', itemId: 'T4_MEAL_SALAD', bonus: 66, speedPct: 32, defaultPrice: 2200 },
+      { id: 'turnip_1', name: 'T4.1 Turnip Salad (+82.5 Quality)', itemId: 'T4_MEAL_SALAD@1', bonus: 82.5, speedPct: 40, defaultPrice: 5200 },
+      { id: 'turnip_2', name: 'T4.2 Turnip Salad (+99 Quality)', itemId: 'T4_MEAL_SALAD@2', bonus: 99, speedPct: 48, defaultPrice: 14000 },
+      { id: 'turnip_3', name: 'T4.3 Turnip Salad (+115.5 Quality)', itemId: 'T4_MEAL_SALAD@3', bonus: 115.5, speedPct: 56, defaultPrice: 42000 },
+      { id: 'octopus_0', name: 'T4.0 Midwater Octopus Salad (+99)', itemId: 'T4_MEAL_SALAD_FISH', bonus: 99, speedPct: 49.5, defaultPrice: 24000 },
+      { id: 'octopus_1', name: 'T4.1 Midwater Octopus Salad (+123.75)', itemId: 'T4_MEAL_SALAD_FISH@1', bonus: 123.75, speedPct: 61.9, defaultPrice: 55000 },
+      { id: 'octopus_2', name: 'T4.2 Midwater Octopus Salad (+148.5)', itemId: 'T4_MEAL_SALAD_FISH@2', bonus: 148.5, speedPct: 74.3, defaultPrice: 120000 },
+      { id: 'octopus_3', name: 'T4.3 Midwater Octopus Salad (+173.25)', itemId: 'T4_MEAL_SALAD_FISH@3', bonus: 173.25, speedPct: 86.6, defaultPrice: 240000 },
+      { id: 'potato_0', name: 'T6.0 Potato Salad (+99 Quality)', itemId: 'T6_MEAL_SALAD', bonus: 99, speedPct: 48, defaultPrice: 4200 },
+      { id: 'potato_1', name: 'T6.1 Potato Salad (+115.5 Quality)', itemId: 'T6_MEAL_SALAD@1', bonus: 115.5, speedPct: 56, defaultPrice: 9500 },
+      { id: 'potato_2', name: 'T6.2 Potato Salad (+132 Quality)', itemId: 'T6_MEAL_SALAD@2', bonus: 132, speedPct: 64, defaultPrice: 26000 },
+      { id: 'potato_3', name: 'T6.3 Potato Salad (+148.5 Quality)', itemId: 'T6_MEAL_SALAD@3', bonus: 148.5, speedPct: 72, defaultPrice: 78000 },
+      { id: 'kraken_0', name: 'T6.0 Deepwater Kraken Salad (+148.5)', itemId: 'T6_MEAL_SALAD_FISH', bonus: 148.5, speedPct: 74.3, defaultPrice: 38000 },
+      { id: 'kraken_1', name: 'T6.1 Deepwater Kraken Salad (+173.25)', itemId: 'T6_MEAL_SALAD_FISH@1', bonus: 173.25, speedPct: 86.6, defaultPrice: 82000 },
+      { id: 'kraken_2', name: 'T6.2 Deepwater Kraken Salad (+198)', itemId: 'T6_MEAL_SALAD_FISH@2', bonus: 198, speedPct: 99, defaultPrice: 175000 },
+      { id: 'kraken_3', name: 'T6.3 Deepwater Kraken Salad (+222.75)', itemId: 'T6_MEAL_SALAD_FISH@3', bonus: 222.75, speedPct: 111.4, defaultPrice: 340000 },
     ];
 
     /**
@@ -244,6 +244,21 @@
       10: 12315,
       11: 21551,
       12: 37715,
+    };
+
+    /**
+     * Base crafting duration (seconds per 8 material units) by effective tier (T + E) verified from items.json.
+     */
+    const BASE_TIME_PER_8_UNITS = {
+      4: 0.333,
+      5: 0.5,
+      6: 0.667,
+      7: 0.833,
+      8: 1.25,
+      9: 1.5,
+      10: 1.8,
+      11: 2.16,
+      12: 2.52,
     };
 
     /**
@@ -878,6 +893,20 @@
       };
     }
 
+    function calculateCraftTimeSeconds({ item, tier = 4, enchantment = 0, speedPct = 0 }) {
+      const t = Math.min(Math.max(Number(tier) || 4, 4), 8);
+      const e = item && item.supportsEnchant === false
+        ? 0
+        : Math.min(Math.max(Number(enchantment) || 0, 0), 4);
+      const effTier = Math.min(Math.max(t + e, 4), 12);
+      const totalMats = getTotalMaterialsPerCraft(item);
+      const basePer8 = BASE_TIME_PER_8_UNITS[effTier] || 0.333;
+      const baseSecondsPerCraft = (totalMats / 8) * basePer8;
+      const spd = Math.max(0, Number(speedPct) || 0);
+      const effectiveSecondsPerCraft = baseSecondsPerCraft / (1 + spd / 100);
+      return { baseSecondsPerCraft, effectiveSecondsPerCraft };
+    }
+
     function getMarketFeeRate({ hasPremium = true, orderType = 'sell_order', directTrade = false }) {
       if (directTrade || orderType === 'direct_trade') return 0.0;
       const baseTax = hasPremium ? 0.04 : 0.08;
@@ -993,7 +1022,10 @@
       crossSpec = 0,
       crossSpecFce = null,
       crossSpecQualityBonus = null,
-      saladBonus = 0,
+      saladId = 'none',
+      saladBonus = null,
+      saladSpeedPct = null,
+      saladPrice = 0,
       feePer100Nutrition = 400,
       primaryMatPrice = 300,
       secondaryMatPrice = 300,
@@ -1001,6 +1033,8 @@
       emptyJournalPrice = 4000,
       fullJournalPrice = 12000,
       outputPrice = 10000,
+      useQualityPricing = false,
+      qualityPrices = null,
       marketFeeRate = 0.065,
       buyFeeRate = 0.025,
     }) {
@@ -1092,17 +1126,70 @@
       const journalGrossRevenue = journalsFilled * fJPrice;
       const journalMarketTax = journalGrossRevenue * marketFeeRate;
 
-      // Buy Order Setup Fees (on net consumed materials + artifacts + empty journals)
-      const totalNetMaterialPurchase = netPrimaryCost + netSecondaryCost + artifactPurchaseCost + journalPurchaseCost;
+      // Crafting Food (Salads): 120s buff duration per salad eaten before crafting
+      const saladObj = SALADS.find((s) => s.id === saladId) || SALADS[0];
+      const effSaladBonus = saladBonus !== null && saladBonus !== undefined
+        ? Math.max(0, Number(saladBonus) || 0)
+        : (saladObj ? saladObj.bonus : 0);
+      const effSaladSpeed = saladSpeedPct !== null && saladSpeedPct !== undefined
+        ? Math.max(0, Number(saladSpeedPct) || 0)
+        : (saladObj ? saladObj.speedPct : 0);
+      const hasFood = (saladId && saladId !== 'none') || effSaladBonus > 0 || effSaladSpeed > 0;
+      const craftTime = calculateCraftTimeSeconds({
+        item,
+        tier: safeTier,
+        enchantment: safeEnchant,
+        speedPct: effSaladSpeed,
+      });
+      const totalCraftSeconds = totalCrafts * craftTime.effectiveSecondsPerCraft;
+      const saladsConsumed = hasFood ? Math.max(1, Math.ceil(totalCraftSeconds / 120)) : 0;
+      const foodUnitPrice = Math.max(0, Number(saladPrice) || 0);
+      const foodPurchaseCost = saladsConsumed * foodUnitPrice;
+
+      // Quality Roll Probabilities (computed before revenue to support Quality-Weighted EV pricing)
+      const effCrossQuality = crossSpecQualityBonus !== null && crossSpecQualityBonus !== undefined
+        ? crossSpecQualityBonus
+        : Math.min(Math.max(Number(crossSpec) || 0, 0), 800) * 0.75;
+      const qualityChances = calculateCraftingQualityChances({
+        mastery,
+        spec,
+        crossSpecQualityBonus: effCrossQuality,
+        useFocus,
+        saladBonus: effSaladBonus,
+      });
+
+      // Buy Order Setup Fees (on net consumed materials + artifacts + empty journals + crafting food)
+      const totalNetMaterialPurchase = netPrimaryCost + netSecondaryCost + artifactPurchaseCost + journalPurchaseCost + foodPurchaseCost;
       const totalBuyOrderFee = totalNetMaterialPurchase * buyFeeRate;
 
-      // Output Revenue & Sales Tax
-      const outPrice = Math.max(0, Number(outputPrice) || 0);
-      const itemGrossRevenue = totalCrafts * outPrice;
+      // Output Revenue & Sales Tax (Quality-Weighted EV vs Single Sell Price)
+      const singleOutPrice = Math.max(0, Number(outputPrice) || 0);
+      let expectedUnitSellPrice = singleOutPrice;
+      const qualityPricesUsed = {};
+      if (useQualityPricing && qualityPrices && typeof qualityPrices === 'object') {
+        expectedUnitSellPrice = 0;
+        qualityChances.tiers.forEach((qt) => {
+          const qp = Math.max(0, Number(qualityPrices[qt.level] ?? singleOutPrice) || 0);
+          qualityPricesUsed[qt.level] = qp;
+          expectedUnitSellPrice += qt.probability * qp;
+        });
+      } else {
+        qualityChances.tiers.forEach((qt) => {
+          qualityPricesUsed[qt.level] = singleOutPrice;
+        });
+      }
+      const itemGrossRevenue = totalCrafts * expectedUnitSellPrice;
       const itemMarketTax = itemGrossRevenue * marketFeeRate;
 
       // Totals
-      const totalProductionCost = netPrimaryCost + netSecondaryCost + artifactPurchaseCost + journalPurchaseCost + totalBuyOrderFee + totalStationFee;
+      const totalProductionCost =
+        netPrimaryCost +
+        netSecondaryCost +
+        artifactPurchaseCost +
+        journalPurchaseCost +
+        foodPurchaseCost +
+        totalBuyOrderFee +
+        totalStationFee;
       const grossRevenue = itemGrossRevenue + journalGrossRevenue;
       const totalMarketTax = itemMarketTax + journalMarketTax;
       const netRevenue = grossRevenue - totalMarketTax;
@@ -1121,17 +1208,6 @@
       const breakEvenPrice = totalCrafts > 0 && (1 - marketFeeRate) > 0
         ? unitCraftCost / (1 - marketFeeRate)
         : 0;
-
-      const effCrossQuality = crossSpecQualityBonus !== null && crossSpecQualityBonus !== undefined
-        ? crossSpecQualityBonus
-        : Math.min(Math.max(Number(crossSpec) || 0, 0), 800) * 0.75;
-      const qualityChances = calculateCraftingQualityChances({
-        mastery,
-        spec,
-        crossSpecQualityBonus: effCrossQuality,
-        useFocus,
-        saladBonus,
-      });
 
       return {
         item,
@@ -1174,6 +1250,13 @@
         journalPurchaseCost,
         journalGrossRevenue,
         netJournalProfit,
+        saladsConsumed,
+        totalCraftSeconds,
+        foodUnitPrice,
+        foodPurchaseCost,
+        useQualityPricing: Boolean(useQualityPricing),
+        expectedUnitSellPrice,
+        qualityPricesUsed,
         totalBuyOrderFee,
         totalProductionCost,
         itemGrossRevenue,
@@ -1276,12 +1359,14 @@
       FAME_PER_MATERIAL_UNIT,
       JOURNAL_FAME_REQUIRED,
       BASE_FOCUS_PER_8_UNITS,
+      BASE_TIME_PER_8_UNITS,
       ITEMS,
       getMaterialItemId,
       getArtifactItemId,
       getCraftedItemId,
       getJournalItemIds,
       getTotalMaterialsPerCraft,
+      calculateCraftTimeSeconds,
       getItemCrossSpecWeight,
       calculateTreeCrossSpecFCE,
       getItemQualityCrossSpecWeight,

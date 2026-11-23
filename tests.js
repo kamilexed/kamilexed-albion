@@ -1023,6 +1023,114 @@ assert(
   `TotalQuality=+${qHigh.totalQualityBonus}, Rolls=${qHigh.totalRolls}, MP=${qHigh.tiers[4].percentage.toFixed(2)}%`
 );
 
+// Verify Craft Time, Crafting Food Cost Deduction & Quality-Weighted Expected Sell Price
+const t8Claymore = C.ITEMS.find(i => i.id === 'claymore'); // 32 mats -> 4x 8-mat scale -> 4 * 1.25s = 5.00s
+const t8ClaymoreSec = C.calculateCraftTimeSeconds({ item: t8Claymore, tier: 8, enchantment: 0, speedPct: 0 }).effectiveSecondsPerCraft;
+const t8ClaymoreFastSec = C.calculateCraftTimeSeconds({ item: t8Claymore, tier: 8, enchantment: 0, speedPct: 24 }).effectiveSecondsPerCraft;
+assert(
+  Math.abs(t8ClaymoreSec - 5.0) < 0.01 && Math.abs(t8ClaymoreFastSec - (5.0 / 1.24)) < 0.01,
+  'Craft time scales by totalMats / 8 and applies salad craft speed divisor (5.00s base -> 4.03s w/ Kraken .0)',
+  `Base=${t8ClaymoreSec.toFixed(2)}s, WithKraken=${t8ClaymoreFastSec.toFixed(2)}s`
+);
+
+const foodBaseSim = C.simulateCrafting({
+  itemId: 'claymore',
+  tier: 8,
+  enchantment: 0,
+  cityId: 'Thetford',
+  useFocus: false,
+  compound: false,
+  useJournals: false,
+  quantity: 100, // 500s -> 5 salads at speedPct 0; 403.2s -> 4 salads at speedPct 24!
+  saladId: 'none',
+  saladBonus: 0,
+  saladSpeedPct: 0,
+  saladPrice: 0,
+  primaryMatPrice: 5000,
+  secondaryMatPrice: 5000,
+  outputPrice: 120000,
+  buyFeeRate: 0.025,
+  marketFeeRate: 0.065,
+});
+const foodCostSim = C.simulateCrafting({
+  itemId: 'claymore',
+  tier: 8,
+  enchantment: 0,
+  cityId: 'Thetford',
+  useFocus: false,
+  compound: false,
+  useJournals: false,
+  quantity: 100,
+  saladId: 'kraken_t6_0',
+  saladBonus: 148.5,
+  saladSpeedPct: 24,
+  saladPrice: 4000,
+  primaryMatPrice: 5000,
+  secondaryMatPrice: 5000,
+  outputPrice: 120000,
+  buyFeeRate: 0.025,
+  marketFeeRate: 0.065,
+});
+assert(
+  foodCostSim.saladsConsumed === 4 &&
+  foodCostSim.foodPurchaseCost === 16000 &&
+  Math.abs((foodBaseSim.netProfit - foodCostSim.netProfit) - 16000 * 1.025) < 0.01,
+  'Crafting Food Cost Deduction calculates 120s-window salads consumed and deducts food + buy order fee from Net Profit',
+  `Salads=${foodCostSim.saladsConsumed}, Cost=${foodCostSim.foodPurchaseCost}, ProfitDelta=${(foodBaseSim.netProfit - foodCostSim.netProfit).toFixed(1)}`
+);
+
+const qPricesSample = { 1: 10000, 2: 11000, 3: 13000, 4: 18000, 5: 40000 };
+const singleModeSim = C.simulateCrafting({
+  itemId: 'broadsword',
+  tier: 6,
+  enchantment: 1,
+  cityId: 'Thetford',
+  useFocus: true,
+  compound: false,
+  useJournals: false,
+  quantity: 10,
+  mastery: 100,
+  spec: 100,
+  saladId: 'none',
+  saladBonus: 0,
+  outputPrice: 10000,
+  useQualityPricing: false,
+  qualityPrices: qPricesSample,
+  marketFeeRate: 0.065,
+  buyFeeRate: 0.025,
+});
+const evModeSim = C.simulateCrafting({
+  itemId: 'broadsword',
+  tier: 6,
+  enchantment: 1,
+  cityId: 'Thetford',
+  useFocus: true,
+  compound: false,
+  useJournals: false,
+  quantity: 10,
+  mastery: 100,
+  spec: 100,
+  saladId: 'none',
+  saladBonus: 0,
+  outputPrice: 10000,
+  useQualityPricing: true,
+  qualityPrices: qPricesSample,
+  marketFeeRate: 0.065,
+  buyFeeRate: 0.025,
+});
+const manualEv = evModeSim.qualityChances.tiers.reduce(
+  (acc, qt) => acc + qt.probability * qPricesSample[qt.level],
+  0
+);
+assert(
+  Math.abs(evModeSim.expectedUnitSellPrice - manualEv) < 0.01 &&
+  singleModeSim.itemGrossRevenue === 10 * 10000 &&
+  Math.abs(evModeSim.itemGrossRevenue - 10 * manualEv) < 0.01 &&
+  evModeSim.netProfit > singleModeSim.netProfit,
+  'Quality-Weighted Expected Sell Price computes exact EV average across Q1–Q5 probabilities while toggle OFF keeps single price',
+  `EV=${manualEv.toFixed(1)}s vs Single=10000s`
+);
+
 console.log('\n=====================================================');
 console.log(`TEST RESULTS: ${passedCount} PASSED, ${failedCount} FAILED`);
 console.log('=====================================================');
